@@ -452,7 +452,13 @@
 
     <div id="loginForm">
       <div class="field"><label>DNI</label><input type="text" id="loginDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos"></div>
-      <div class="field"><label>Contraseña</label><input type="password" id="loginPassword"></div>
+      <div class="field">
+        <label>Contraseña</label>
+        <div style="display:flex; gap:6px;">
+          <input type="password" id="loginPassword" style="flex:1;">
+          <button type="button" id="loginPassToggle" class="wn-arrow" style="width:44px; font-size:0.9rem;">👁</button>
+        </div>
+      </div>
       <button id="loginBtn" class="auth-submit">Ingresar</button>
     </div>
 
@@ -530,7 +536,7 @@
 
   <div class="header-total">
     <div>
-      <div class="lbl">Jornal completo semana</div>
+      <div class="lbl">Total semana (según boleta)</div>
       <div id="jornadasQuickView" class="lbl" style="margin-top:1px;">0 jornadas</div>
     </div>
     <div class="total money" id="totalBruto">S/0.00</div>
@@ -1107,36 +1113,65 @@ function renderWeekHeader(){
     first.toLocaleDateString('es-PE', opts) + ' — ' + last.toLocaleDateString('es-PE', opts) + ' · ' + first.getFullYear();
 }
 
-function getTurnoRoles(dayData){
-  // Solo se considera "pegada" cuando 2 turnos SEGUIDOS están marcados
-  // (Amanecida->Día o Día->Tarde). Amanecida + Tarde sin el turno de Día
-  // en medio son 2 jornadas independientes, no una pegada.
+function getTurnoRoles(dayData, prevTardeMarked){
+  // Se considera "pegada" cuando 2 turnos SEGUIDOS están marcados:
+  // Amanecida->Día, Día->Tarde, o Tarde(día anterior)->Amanecida(este día,
+  // cruzando medianoche). Amanecida + Tarde sin el turno de Día en medio
+  // son 2 jornadas independientes, no una pegada.
   const keys = ['amanecida','dia','tarde'];
   const marks = keys.map(k=>!!dayData.turnos[k]);
   const roles = {amanecida:null, dia:null, tarde:null};
-  let esPegada = false, maxRun = 0, i = 0;
+  let esPegada = false, crossDayPegada = false, maxRun = 0, i = 0;
 
   while(i<3){
     if(marks[i]){
       let j=i, runKeys=[];
       while(j<3 && marks[j]){ runKeys.push(keys[j]); j++; }
-      runKeys.forEach((k, idx)=>{ roles[k] = idx===0 ? 'normal' : 'he'; });
-      maxRun = Math.max(maxRun, runKeys.length);
-      if(runKeys.length>=2) esPegada = true;
+      // Si el turno de ayer (Tarde) ya estaba marcado y este día empieza
+      // justo en Amanecida, la racha continúa desde ayer: Amanecida ya
+      // sería el 2do turno consecutivo (HE), no el primero.
+      const continuaDeAyer = (i===0 && !!prevTardeMarked);
+      runKeys.forEach((k, idx)=>{
+        const idxEfectivo = continuaDeAyer ? idx+1 : idx;
+        roles[k] = idxEfectivo===0 ? 'normal' : 'he';
+      });
+      const largoTotal = continuaDeAyer ? runKeys.length+1 : runKeys.length;
+      maxRun = Math.max(maxRun, largoTotal);
+      if(largoTotal>=2) esPegada = true;
+      if(continuaDeAyer) crossDayPegada = true;
       i = j;
     } else { i++; }
   }
   const warning = maxRun>=3 ? 'Supera el máximo de 2 jornadas consecutivas (art. 17 del Reglamento).' : '';
-  return {roles, esPegada, warning};
+  return {roles, esPegada, crossDayPegada, warning, maxRun};
+}
+
+// Verifica si el turno Tarde del día calendario ANTERIOR a `monday`+`dayIndex`
+// está marcado — buscando en la semana actual o, si es lunes, en la semana
+// anterior guardada.
+function getPrevDayTardeMarked(monday, weekDataObj, dayIndex){
+  if(dayIndex > 0){
+    const dates = weekDates(monday);
+    const prevKey = isoDate(dates[dayIndex-1]);
+    const dd = weekDataObj[prevKey];
+    return !!(dd && dd.turnos && dd.turnos.tarde);
+  }
+  const prevMonday = new Date(monday);
+  prevMonday.setDate(prevMonday.getDate()-7);
+  const prevWeekData = lsGet(weekKey(prevMonday)) || {};
+  const prevSunday = weekDates(prevMonday)[6];
+  const dd = prevWeekData[isoDate(prevSunday)];
+  return !!(dd && dd.turnos && dd.turnos.tarde);
 }
 
 function countWeekJornadas(){
   let total = 0;
-  weekDates(currentMonday).forEach(d=>{
+  weekDates(currentMonday).forEach((d,i)=>{
     const k = isoDate(d);
     const dd = weekData[k];
     if(!dd) return;
-    const {roles} = getTurnoRoles(dd);
+    const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
+    const {roles} = getTurnoRoles(dd, prevTardeMarked);
     TURNOS.forEach(t=>{ if(roles[t.key]) total++; });
   });
   return total;
@@ -1323,13 +1358,14 @@ function computeMonToSatCompleteFor(weekDataObj, dates){
   }
   return true;
 }
-function computeWeekJornadasFor(weekDataObj, dates){
+function computeWeekJornadasFor(weekDataObj, dates, monday){
   let total = 0;
-  dates.forEach(d=>{
+  dates.forEach((d,i)=>{
     const k = isoDate(d);
     const dd = weekDataObj[k];
     if(!dd) return;
-    const {roles} = getTurnoRoles(dd);
+    const prevTardeMarked = monday ? getPrevDayTardeMarked(monday, weekDataObj, i) : false;
+    const {roles} = getTurnoRoles(dd, prevTardeMarked);
     TURNOS.forEach(t=>{ if(roles[t.key]) total++; });
   });
   return total;
@@ -1341,14 +1377,15 @@ const DEFAULT_DAY_DATA = {
 function computeWeekDayAmounts(monday, weekDataObj){
   const dates = weekDates(monday);
   const monToSatComplete = computeMonToSatCompleteFor(weekDataObj, dates);
-  const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates);
+  const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates, monday);
   const aplicaRM = totalJornadasWeek >= 7;
   const map = {};
   dates.forEach((d,i)=>{
     const k = isoDate(d);
     const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
     const domingoRecargo = (i===6) && monToSatComplete;
-    const result = computeDay(k, dayData, aplicaRM, domingoRecargo);
+    const prevTardeMarked = getPrevDayTardeMarked(monday, weekDataObj, i);
+    const result = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
     map[k] = result.subtotalDia;
   });
   return map;
@@ -1450,7 +1487,7 @@ function renderMonthEarnings(){
 function computeWeekSummary(monday, weekDataObj){
   const dates = weekDates(monday);
   const monToSatComplete = computeMonToSatCompleteFor(weekDataObj, dates);
-  const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates);
+  const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates, monday);
   const aplicaRM = totalJornadasWeek >= 7;
   let JB=0,FER=0,DOMG=0,HE=0,ADI=0,ASIGF=0,RM=0;
   let jornadasNormales=0,jornadasHE=0,jornadasFeriado=0,jornadasDomingo=0;
@@ -1459,7 +1496,8 @@ function computeWeekSummary(monday, weekDataObj){
     const k = isoDate(d);
     const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
     const domingoRecargo = (i===6) && monToSatComplete;
-    const r = computeDay(k, dayData, aplicaRM, domingoRecargo);
+    const prevTardeMarked = getPrevDayTardeMarked(monday, weekDataObj, i);
+    const r = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
     JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross;
     ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
     jornadasNormales+=r.jornadasNormales; jornadasHE+=r.jornadasHE;
@@ -1583,7 +1621,7 @@ async function handleBoletaFile(file){
   }
 }
 
-function computeDay(dateISO, dayData, aplicaRM, domingoRecargo){
+function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, prevTardeMarked){
   const feriadoInfo = FERIADOS_2026[dateISO];
   const isFeriado = !!feriadoInfo;
   // Confirmado por el usuario: en PDP se paga como feriado con 100% de recargo
@@ -1594,7 +1632,7 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo){
   // se paga con 100% de recargo adicional (igual que un feriado). No se
   // duplica si el domingo además coincide con un feriado del calendario.
   const aplicarRecargoDomingo = domingoRecargo && !isFeriado;
-  const {roles, esPegada, warning} = getTurnoRoles(dayData);
+  const {roles, esPegada, crossDayPegada, warning} = getTurnoRoles(dayData, prevTardeMarked);
 
   let jornadaBasica=0, feriadoGross=0, domingoGross=0, heGross=0, refriMov=0, adicionales=0, asignacionFamiliar=0;
   let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0;
@@ -1666,13 +1704,14 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo){
   const jornalCompletoDia = baseColaterales+adicionales+asignacionFamiliar+dominicalDia+gratificacionDia+bonifExtraDia+ctsDia+vacacionesDia;
   const subtotalDia = jornalCompletoDia+refriMov;
 
-  return {jornadaBasica, feriadoGross, domingoGross, heGross, refriMov, adicionales, asignacionFamiliar, dominicalDia, gratificacionDia, bonifExtraDia, ctsDia, vacacionesDia, subtotalDia, isFeriado, feriadoInfo, aplicarRecargoDomingo, esPegada, warning, diasTrabajados, jornadasNormales, jornadasHE, jornadasFeriado, jornadasDomingo, roles};
+  return {jornadaBasica, feriadoGross, domingoGross, heGross, refriMov, adicionales, asignacionFamiliar, dominicalDia, gratificacionDia, bonifExtraDia, ctsDia, vacacionesDia, subtotalDia, isFeriado, feriadoInfo, aplicarRecargoDomingo, esPegada, crossDayPegada, warning, diasTrabajados, jornadasNormales, jornadasHE, jornadasFeriado, jornadasDomingo, roles};
 }
 
 function buildDayChipHTML(k, i, d, aplicaRM){
   const dayData = weekData[k];
   const domingoRecargo = (i===6) && weekMonToSatComplete();
-  const result = computeDay(k, dayData, aplicaRM, domingoRecargo);
+  const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
+  const result = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
   const dayLabel3 = DIAS[i].slice(0,3);
   const dateNum = d.getDate();
 
@@ -1696,14 +1735,15 @@ function buildDayDetailHTML(k, i, d, aplicaRM){
   const dayData = weekData[k];
   const locked = isCurrentWeekLocked();
   const domingoRecargo = (i===6) && weekMonToSatComplete();
-  const result = computeDay(k, dayData, aplicaRM, domingoRecargo);
+  const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
+  const result = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
   const dateLabel = d.toLocaleDateString('es-PE',{weekday:'long', day:'numeric', month:'long'});
 
   let tagsHtml = '';
   if(locked) tagsHtml += `<span class="locked-tag">🔒 Cerrada</span>`;
   if(result.isFeriado) tagsHtml += `<span class="tag tag-feriado">Feriado</span>`;
   if(result.aplicarRecargoDomingo) tagsHtml += `<span class="tag tag-feriado" style="margin-left:6px;">Descanso dominical +100%</span>`;
-  if(result.esPegada) tagsHtml += `<span class="tag tag-pegada" style="margin-left:6px;">Pegada</span>`;
+  if(result.esPegada) tagsHtml += `<span class="tag tag-pegada" style="margin-left:6px;">${result.crossDayPegada?'Pegada (con Tarde de ayer)':'Pegada'}</span>`;
 
   const opsOpen = expandedOps.has(k);
 
@@ -1824,7 +1864,24 @@ dayDetailContainer.addEventListener('click', async (e)=>{
   const btn = e.target.closest('.turno-btn');
   if(btn){
     const date = btn.dataset.date, turno = btn.dataset.turno;
-    weekData[date].turnos[turno] = !weekData[date].turnos[turno];
+    const turningOn = !weekData[date].turnos[turno];
+    if(turningOn){
+      // Antes de marcarlo, simular el resultado para no permitir que se
+      // supere el máximo legal de 2 jornadas consecutivas (art. 17 del
+      // Reglamento) — incluyendo cuando la 2da jornada del día anterior
+      // (Tarde) ya estaba marcada.
+      const tempDayData = JSON.parse(JSON.stringify(weekData[date]));
+      tempDayData.turnos[turno] = true;
+      const dates = weekDates(currentMonday);
+      const dayIndex = dates.findIndex(d=>isoDate(d)===date);
+      const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, dayIndex);
+      const {maxRun} = getTurnoRoles(tempDayData, prevTardeMarked);
+      if(maxRun >= 3){
+        alert('No se puede marcar este turno: superarías el máximo de 2 jornadas consecutivas que permite la ley (art. 17 del Reglamento de la Ley 27866).');
+        return;
+      }
+    }
+    weekData[date].turnos[turno] = turningOn;
     await saveWeek();
     updateSingleDay(date);
   }
@@ -1881,7 +1938,8 @@ function renderSummary(){
   dates.forEach((d, i)=>{
     const k = isoDate(d);
     const domingoRecargo = (i===6) && monToSatComplete;
-    const r = computeDay(k, weekData[k], aplicaRM, domingoRecargo);
+    const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
+    const r = computeDay(k, weekData[k], aplicaRM, domingoRecargo, prevTardeMarked);
     JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross; ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
     diasTrabajados += r.diasTrabajados;
     jornadasNormales += r.jornadasNormales;
@@ -1949,7 +2007,7 @@ function renderSummary(){
   if(jornadasFeriado>0) quickParts.push(jornadasFeriado + ' en feriado');
   if(jornadasDomingo>0) quickParts.push(jornadasDomingo + ' en domingo x2');
   document.getElementById('jornadasQuickView').textContent = quickParts.join(' · ');
-  document.getElementById('totalBruto').textContent = fmtMoney(jornalCompleto);
+  document.getElementById('totalBruto').textContent = fmtMoney(totalBruto);
   document.getElementById('rJB').textContent = fmtMoney(JB);
   document.getElementById('rFER').textContent = fmtMoney(FER);
   document.getElementById('rDOMG').textContent = fmtMoney(DOMG);
@@ -2088,15 +2146,38 @@ async function loadAdminView(){
       const estadoTag = aprobado
         ? ''
         : `<button class="mini-tracker-pct approve-btn" data-dni="${u.dni}" style="background:var(--good); color:var(--bg); border:none; border-radius:6px; padding:4px 10px; cursor:pointer; font-weight:600;">Aprobar</button>`;
+      const deleteTag = `<button class="mini-tracker-pct delete-btn" data-dni="${u.dni}" data-nombre="${u.nombre}" style="background:var(--feriado); color:#fff; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; font-weight:600; margin-left:6px;">🗑 Eliminar</button>`;
       return `<div class="admin-row" style="${aprobado?'':'border-color:var(--pegada);'}">
         <div class="admin-row-top">
           <span class="admin-row-name">${u.nombre}${u.esAdmin?' 👑':''}</span>
           <span class="admin-row-dni">DNI ${u.dni}</span>
         </div>
-        <div class="admin-row-detail"><span>${especialidadLabel}</span>${estadoTag}</div>
+        <div class="admin-row-detail"><span>${especialidadLabel}</span>${estadoTag}${deleteTag}</div>
         ${detalle}
       </div>`;
     }).join('');
+    listEl.querySelectorAll('.delete-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const dni = btn.dataset.dni, nombre = btn.dataset.nombre;
+        if(dni === currentUserProfile.dni){
+          alert('No puedes eliminarte a ti mismo desde aquí.');
+          return;
+        }
+        const confirmar = confirm(`¿Eliminar el registro de "${nombre}" (DNI ${dni})? Esto borra su perfil y resúmenes de la base de datos. Si su cuenta de acceso sigue activa en Firebase Authentication, bórrala también allá para que no pueda volver a entrar.`);
+        if(!confirmar) return;
+        btn.textContent = '...';
+        try{
+          const resumenesSnap = await db.collection('usuarios').doc(dni).collection('resumenes').get();
+          const batch = db.batch();
+          resumenesSnap.docs.forEach(d=>batch.delete(d.ref));
+          await batch.commit();
+          await db.collection('usuarios').doc(dni).delete();
+          loadAdminView();
+        }catch(err){
+          alert('No se pudo eliminar: ' + err.message);
+        }
+      });
+    });
     listEl.querySelectorAll('.approve-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         btn.textContent = '...';
@@ -2214,6 +2295,13 @@ function showAuthError(msg){
 function setAuthLoading(on){
   document.getElementById('authLoading').style.display = on ? 'block' : 'none';
 }
+
+document.getElementById('loginPassToggle').addEventListener('click', ()=>{
+  const input = document.getElementById('loginPassword');
+  const btn = document.getElementById('loginPassToggle');
+  if(input.type === 'password'){ input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+});
 
 document.getElementById('tabLogin').addEventListener('click', ()=>{
   document.getElementById('tabLogin').classList.add('active');
