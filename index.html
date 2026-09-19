@@ -425,6 +425,18 @@
 </head>
 <body>
 
+<div id="pendingScreen" class="auth-screen" style="display:none;">
+  <div class="auth-box" style="text-align:center;">
+    <div style="font-size:2.5rem; margin-bottom:10px;">⏳</div>
+    <h1 style="font-size:1.15rem; margin-bottom:8px;">Registro en revisión</h1>
+    <div class="subtitle" style="margin-bottom:18px;">
+      Tu cuenta (<span id="pendingNombre"></span>) fue creada, pero aún necesita la aprobación del administrador para poder ingresar. Avísale al sindicato/RRHH que revisen tu registro.
+    </div>
+    <button id="pendingRefreshBtn" class="auth-submit" style="background:var(--accent2);">Ya me aprobaron, revisar de nuevo</button>
+    <button id="pendingLogoutBtn" class="auth-tab" style="width:100%; margin-top:10px;">Cerrar sesión</button>
+  </div>
+</div>
+
 <div id="authScreen" class="auth-screen">
   <div class="auth-box">
     <div class="brand-strip" style="margin-bottom:16px;">
@@ -445,7 +457,8 @@
     </div>
 
     <div id="registerForm" style="display:none;">
-      <div class="field"><label>Nombre completo</label><input type="text" id="regNombre"></div>
+      <div class="field"><label>Apellidos</label><input type="text" id="regApellidos" placeholder="Gonzales Flores"></div>
+      <div class="field"><label>Nombres</label><input type="text" id="regNombres" placeholder="Javier"></div>
       <div class="field"><label>DNI</label><input type="text" id="regDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos"></div>
       <div class="field">
         <label>Especialidad</label>
@@ -475,6 +488,7 @@
     <div>
       <h1 id="pageTitle">Control de Turnos — Estibador</h1>
       <div class="subtitle">Terminal Portuario Paracas (PDP)</div>
+      <div id="userNameDisplay" class="subtitle" style="color:var(--accent2); margin-top:2px;"></div>
     </div>
     <div style="display:flex; align-items:flex-start; gap:6px;">
       <div class="badge-stack">
@@ -487,7 +501,7 @@
           <span class="mb-val" id="loanBadgeVal">S/0/S/0</span>
         </button>
         <button class="mini-badge" id="earningsBadgeBtn">
-          <span class="mb-label">Acum. mes</span>
+          <span class="mb-label">Acum. bruto mes</span>
           <span class="mb-val" id="earningsBadgeVal">S/0</span>
         </button>
       </div>
@@ -642,6 +656,9 @@
     <div class="modal-panel">
       <div class="modal-head"><span>Acumulado generado del mes</span><button class="modal-close" data-close="earningsModal">✕</button></div>
       <div class="modal-body">
+        <div class="info-box" style="margin:0 0 12px;">
+          Este total incluye <b>jornal completo + refrigerio + movilidad</b> de cada jornada — es el bruto real que se te va pagando, por eso puede verse mayor que el "Jornal completo semana" de arriba (ese no incluye refrigerio ni movilidad).
+        </div>
         <div class="sd-row total-row" style="margin-bottom:10px;">
           <span id="earningsMonthLabel">Setiembre 2026</span>
           <span class="val money" id="earningsMonthTotal">S/0.00</span>
@@ -2047,20 +2064,38 @@ async function loadAdminView(){
       }catch(e){ /* sin resúmenes aún */ }
       rows.push({u, ultimo});
     }
+    rows.sort((a,b)=> (a.u.aprobado||a.u.esAdmin) - (b.u.aprobado||b.u.esAdmin));
+    const pendientes = rows.filter(r=>!r.u.aprobado && !r.u.esAdmin).length;
+    if(pendientes>0) statusEl.textContent += ` ⏳ ${pendientes} pendiente(s) de aprobar.`;
     listEl.innerHTML = rows.map(({u, ultimo})=>{
       const especialidadLabel = SPECIALTY_LABELS[u.especialidad] || u.especialidad;
       const detalle = ultimo
         ? `<div class="admin-row-detail"><span>Sem. ${ultimo.semana.replace('semana-','')}</span><span>Neto: ${fmtMoney(ultimo.neto)}</span></div>`
         : `<div class="admin-row-detail"><span style="color:var(--muted);">Sin datos guardados aún</span></div>`;
-      return `<div class="admin-row">
+      const aprobado = u.aprobado || u.esAdmin;
+      const estadoTag = aprobado
+        ? ''
+        : `<button class="mini-tracker-pct approve-btn" data-dni="${u.dni}" style="background:var(--good); color:var(--bg); border:none; border-radius:6px; padding:4px 10px; cursor:pointer; font-weight:600;">Aprobar</button>`;
+      return `<div class="admin-row" style="${aprobado?'':'border-color:var(--pegada);'}">
         <div class="admin-row-top">
           <span class="admin-row-name">${u.nombre}${u.esAdmin?' 👑':''}</span>
           <span class="admin-row-dni">DNI ${u.dni}</span>
         </div>
-        <div class="admin-row-detail"><span>${especialidadLabel}</span></div>
+        <div class="admin-row-detail"><span>${especialidadLabel}</span>${estadoTag}</div>
         ${detalle}
       </div>`;
     }).join('');
+    listEl.querySelectorAll('.approve-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        btn.textContent = '...';
+        try{
+          await db.collection('usuarios').doc(btn.dataset.dni).update({aprobado:true});
+          loadAdminView();
+        }catch(err){
+          alert('No se pudo aprobar: ' + err.message);
+        }
+      });
+    });
   }catch(err){
     statusEl.textContent = '⚠ No se pudo cargar la lista (revisa las reglas de Firestore): ' + err.message;
   }
@@ -2201,23 +2236,41 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
   }
 });
 
+document.getElementById('pendingRefreshBtn').addEventListener('click', async ()=>{
+  const dni = currentUserProfile.dni;
+  const doc = await db.collection('usuarios').doc(dni).get();
+  const data = doc.data();
+  if(data.esAdmin || data.aprobado){
+    location.reload();
+  } else {
+    alert('Todavía no ha sido aprobado tu registro. Intenta más tarde.');
+  }
+});
+document.getElementById('pendingLogoutBtn').addEventListener('click', async ()=>{
+  await auth.signOut();
+  location.reload();
+});
+
 document.getElementById('registerBtn').addEventListener('click', async ()=>{
-  const nombre = document.getElementById('regNombre').value.trim();
+  const apellidos = document.getElementById('regApellidos').value.trim();
+  const nombres = document.getElementById('regNombres').value.trim();
   const dni = document.getElementById('regDni').value.trim();
   const especialidad = document.getElementById('regEspecialidad').value;
   const password = document.getElementById('regPassword').value;
   const password2 = document.getElementById('regPassword2').value;
 
-  if(!nombre){ showAuthError('Escribe tu nombre completo.'); return; }
+  if(!apellidos){ showAuthError('Escribe tus apellidos.'); return; }
+  if(!nombres){ showAuthError('Escribe tus nombres.'); return; }
   if(!/^\d{8}$/.test(dni)){ showAuthError('El DNI debe tener 8 dígitos.'); return; }
   if(password.length < 6){ showAuthError('La contraseña debe tener al menos 6 caracteres.'); return; }
   if(password !== password2){ showAuthError('Las contraseñas no coinciden.'); return; }
 
+  const nombre = `${apellidos}, ${nombres}`;
   showAuthError(''); setAuthLoading(true);
   try{
     const cred = await auth.createUserWithEmailAndPassword(dniToEmail(dni), password);
     await db.collection('usuarios').doc(dni).set({
-      dni, nombre, especialidad, esAdmin:false,
+      dni, apellidos, nombres, nombre, especialidad, esAdmin:false, aprobado:false,
       creadoEn: firebase.firestore.FieldValue.serverTimestamp()
     });
   }catch(err){
@@ -2237,6 +2290,16 @@ auth.onAuthStateChanged(async (user)=>{
       const doc = await db.collection('usuarios').doc(dni).get();
       if(doc.exists){
         currentUserProfile = doc.data();
+        const autorizado = currentUserProfile.esAdmin || currentUserProfile.aprobado;
+        if(!autorizado){
+          document.getElementById('authScreen').style.display = 'none';
+          document.getElementById('pendingNombre').textContent = currentUserProfile.nombre + ' · DNI ' + currentUserProfile.dni;
+          document.getElementById('pendingScreen').style.display = 'flex';
+          setAuthLoading(false);
+          return;
+        }
+        document.getElementById('pendingScreen').style.display = 'none';
+        document.getElementById('userNameDisplay').textContent = currentUserProfile.nombre + (currentUserProfile.esAdmin ? ' 👑' : '');
         CFG.especialidad = currentUserProfile.especialidad || CFG.especialidad;
         CFG.basico = SPECIALTY_RATES[CFG.especialidad] || CFG.basico;
         document.getElementById('authScreen').style.display = 'none';
@@ -2254,6 +2317,7 @@ auth.onAuthStateChanged(async (user)=>{
     }
   } else {
     currentUserProfile = null;
+    document.getElementById('pendingScreen').style.display = 'none';
     document.getElementById('authScreen').style.display = 'flex';
     setAuthLoading(false);
   }
