@@ -2129,8 +2129,13 @@ async function loadAdminView(){
       let ultimo = null;
       try{
         const resumenesSnap = await db.collection('usuarios').doc(u.dni)
-          .collection('resumenes').orderBy('semana','desc').limit(1).get();
-        if(!resumenesSnap.empty) ultimo = resumenesSnap.docs[0].data();
+          .collection('resumenes').orderBy('semana','desc').limit(5).get();
+        // Se muestra la semana más reciente que SÍ tenga jornadas
+        // trabajadas, en vez de la última aunque esté vacía (evita que
+        // parezca un error cuando alguien simplemente no ha marcado nada
+        // todavía en la semana actual).
+        const conDatos = resumenesSnap.docs.map(d=>d.data()).find(r=>r.jornadas>0);
+        ultimo = conDatos || (resumenesSnap.empty ? null : resumenesSnap.docs[0].data());
       }catch(e){ /* sin resúmenes aún */ }
       rows.push({u, ultimo});
     }
@@ -2139,9 +2144,9 @@ async function loadAdminView(){
     if(pendientes>0) statusEl.textContent += ` ⏳ ${pendientes} pendiente(s) de aprobar.`;
     listEl.innerHTML = rows.map(({u, ultimo})=>{
       const especialidadLabel = SPECIALTY_LABELS[u.especialidad] || u.especialidad;
-      const detalle = ultimo
+      const detalle = (ultimo && ultimo.jornadas>0)
         ? `<div class="admin-row-detail"><span>Sem. ${ultimo.semana.replace('semana-','')}</span><span>Neto: ${fmtMoney(ultimo.neto)}</span></div>`
-        : `<div class="admin-row-detail"><span style="color:var(--muted);">Sin datos guardados aún</span></div>`;
+        : `<div class="admin-row-detail"><span style="color:var(--muted);">Aún no ha marcado turnos</span></div>`;
       const aprobado = u.aprobado || u.esAdmin;
       const estadoTag = aprobado
         ? ''
