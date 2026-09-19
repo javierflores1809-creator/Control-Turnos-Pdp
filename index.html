@@ -451,7 +451,7 @@
     </div>
 
     <div id="loginForm">
-      <div class="field"><label>DNI</label><input type="text" id="loginDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos"></div>
+      <div class="field"><label>DNI</label><input type="text" id="loginDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos" autocomplete="off"></div>
       <div class="field">
         <label>Contraseña</label>
         <div style="display:flex; gap:6px;">
@@ -463,9 +463,9 @@
     </div>
 
     <div id="registerForm" style="display:none;">
-      <div class="field"><label>Apellidos</label><input type="text" id="regApellidos" placeholder="Gonzales Flores"></div>
-      <div class="field"><label>Nombres</label><input type="text" id="regNombres" placeholder="Javier"></div>
-      <div class="field"><label>DNI</label><input type="text" id="regDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos"></div>
+      <div class="field"><label>Apellidos</label><input type="text" id="regApellidos" placeholder="Gonzales Flores" autocomplete="off" autocapitalize="words"></div>
+      <div class="field"><label>Nombres</label><input type="text" id="regNombres" placeholder="Javier" autocomplete="off" autocapitalize="words"></div>
+      <div class="field"><label>DNI</label><input type="text" id="regDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos" autocomplete="off"></div>
       <div class="field">
         <label>Especialidad</label>
         <select id="regEspecialidad">
