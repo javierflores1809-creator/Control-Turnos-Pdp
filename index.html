@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Turnos — Estibador PDP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1720;
+    --surface:#132433;
+    --surface-2:#1A2F40;
+    --surface-3:#24405480;
+    --line:#25404F;
+    --text:#E9F1F5;
+    --muted:#7E97A3;
+    --accent:#C99A4D;
+    --accent-dim:#C99A4D26;
+    --accent2:#4E9088;
+    --accent2-dim:#4E908826;
+    --feriado:#C15050;
+    --feriado-dim:#C1505022;
+    --pegada:#C9A23E;
+    --pegada-dim:#C9A23E22;
+    --good:#4E9F7E;
+    --good-dim:#4E9F7E26;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    padding-bottom:24px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .money{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  header{
+    padding:22px 16px 16px;
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:5;
+    background:var(--bg);
+  }
+  .brand-strip{
+    display:flex; align-items:center; gap:10px;
+    font-family:'Oswald',sans-serif; font-size:0.68rem; letter-spacing:1.8px;
+    color:var(--muted); text-transform:uppercase; margin-bottom:10px;
+  }
+  .brand-strip .brand-line{flex:1; height:1px; background:var(--line);}
+  .brand-strip input{
+    background:none; border:none; color:var(--accent2); font-family:inherit;
+    font-size:inherit; letter-spacing:inherit; text-transform:inherit;
+    padding:0; width:auto; max-width:220px;
+  }
+  .brand-strip input:focus{outline:none; border-bottom:1px dashed var(--line);}
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:600;
+    font-size:1.35rem;
+    margin:0 0 2px;
+    letter-spacing:0.2px;
+  }
+  .subtitle{color:var(--muted); font-size:0.82rem; margin-bottom:14px;}
+  .title-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .corner-menu-wrap{position:relative; flex-shrink:0;}
+  .corner-menu-btn{
+    background:var(--surface); border:1px solid var(--line); color:var(--muted);
+    width:36px; height:36px; border-radius:9px; font-size:1.1rem; cursor:pointer;
+  }
+  .corner-menu-btn:active{border-color:var(--accent2); color:var(--text);}
+  .corner-menu{
+    display:none; position:absolute; top:42px; right:0; z-index:20;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    overflow:hidden; min-width:190px; box-shadow:0 6px 18px rgba(0,0,0,0.35);
+  }
+  .corner-menu.open{display:block;}
+  .corner-menu button{
+    display:block; width:100%; text-align:left; padding:11px 14px;
+    background:none; border:none; color:var(--text); font-family:'IBM Plex Sans',sans-serif;
+    font-size:0.82rem; cursor:pointer; border-bottom:1px solid var(--line);
+  }
+  .corner-menu button:last-child{border-bottom:none;}
+  .corner-menu button:active{background:var(--surface-3);}
+
+  .week-nav-pro{
+    display:flex; align-items:center; gap:8px; margin-top:14px;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:10px 8px;
+  }
+  .wn-arrow{
+    background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    font-size:1.2rem; width:38px; height:38px; border-radius:9px; cursor:pointer; flex-shrink:0;
+  }
+  .wn-arrow:active{border-color:var(--accent2);}
+  .wn-center{flex:1; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .wn-badge{
+    font-family:'Oswald',sans-serif; font-size:0.68rem; letter-spacing:1px; text-transform:uppercase;
+    color:var(--bg); background:var(--accent2); padding:2px 10px; border-radius:20px;
+  }
+  .wn-range{font-family:'Oswald',sans-serif; font-size:0.98rem; color:var(--text);}
+
+  .wn-lock{font-size:1rem;}
+  .wn-lock.locked{border-color:var(--good); color:var(--good); background:var(--good-dim);}
+  .day-detail-card.locked{opacity:0.55;}
+  .day-detail-card.locked .turno-btn,
+  .day-detail-card.locked input,
+  .day-detail-card.locked select{
+    pointer-events:none;
+  }
+  .locked-tag{
+    background:var(--good); color:var(--bg); font-size:0.66rem; font-weight:700;
+    padding:3px 8px; border-radius:20px; margin-left:6px;
+  }
+
+  .header-breakdown-toggle{margin-top:10px; border-top:1px solid var(--line); padding-top:10px;}
+  .header-breakdown-toggle summary{color:var(--accent2); font-size:0.8rem;}
+
+  .header-total{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:10px; padding-top:10px; border-top:1px solid var(--line);
+  }
+  .header-total .lbl{font-size:0.72rem; color:var(--muted);}
+  .header-total .total{font-family:'IBM Plex Mono',monospace; font-size:1.25rem; font-weight:600; color:var(--accent);}
+  .header-neto{
+    display:flex; justify-content:space-between; margin-top:6px;
+    font-size:0.74rem; color:var(--muted);
+  }
+  .header-neto .money{color:var(--good); font-weight:600;}
+
+  .mini-tracker{
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; margin-bottom:8px; box-shadow:0 1px 6px rgba(0,0,0,0.18);
+  }
+  .badge-stack{display:flex; flex-direction:column; gap:4px; align-items:flex-end;}
+  .mini-badge{
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:4px 9px; cursor:pointer; display:flex; align-items:center; gap:6px;
+    white-space:nowrap;
+  }
+  .mini-badge .mb-label{font-size:0.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px;}
+  .mini-badge .mb-val{font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text); font-weight:600;}
+  .mini-badge.warn{border-color:var(--pegada);}
+  .mini-badge.warn .mb-val{color:var(--pegada);}
+  .mini-badge.over{border-color:var(--feriado);}
+  .mini-badge.over .mb-val{color:var(--feriado);}
+
+  .mini-tracker-row{display:flex; align-items:center; gap:8px;}
+  .mini-tracker-label{font-size:0.74rem; color:var(--text); font-weight:600; white-space:nowrap;}
+  .mini-tracker-bar{
+    flex:1; height:4px; background:var(--surface-2); border-radius:3px; overflow:hidden;
+  }
+  .mini-tracker-fill{height:100%; border-radius:3px; background:var(--good); transition:width 0.3s ease, background 0.3s ease;}
+  .mini-tracker-pct{font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--muted); white-space:nowrap;}
+  .mini-tracker.warn .mini-tracker-fill{background:var(--pegada);}
+  .mini-tracker.warn .mini-tracker-pct{color:var(--pegada);}
+  .mini-tracker.over .mini-tracker-fill{background:var(--feriado);}
+  .mini-tracker.over .mini-tracker-pct{color:var(--feriado); font-weight:600;}
+  .mini-tracker .month-details{margin-top:6px; padding-top:6px;}
+  .mini-tracker .month-details summary{font-size:0.68rem;}
+
+  .month-details{margin-top:10px; border-top:1px dashed var(--line); padding-top:8px;}
+  .month-details summary{font-size:0.76rem; color:var(--muted); cursor:pointer; list-style:none;}
+  .month-details summary::-webkit-details-marker{display:none;}
+  .month-details summary::before{content:'▸ ';}
+  .month-details[open] summary::before{content:'▾ ';}
+  .month-day-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:0.76rem; color:var(--text); padding:6px 0; border-bottom:1px solid var(--line);
+  }
+  .month-day-row:last-child{border-bottom:none;}
+
+  .day-strip{
+    display:flex; gap:6px; margin-bottom:14px;
+  }
+  .day-chip{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:9px 2px 8px; border-radius:12px; border:2px solid var(--line);
+    background:var(--surface); cursor:pointer; position:relative;
+    transition:border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  }
+  .day-chip .dc-label{font-size:0.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;}
+  .day-chip .dc-date{font-family:'Oswald',sans-serif; font-size:1.15rem; font-weight:600; color:var(--text); line-height:1.1;}
+  .day-chip .dc-amount{font-family:'IBM Plex Mono',monospace; font-size:0.6rem; color:var(--muted);}
+  .day-chip .dc-dot{
+    position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:transparent;
+  }
+  .day-chip.has-work{border-color:var(--good);}
+  .day-chip.has-work .dc-dot{background:var(--good);}
+  .day-chip.has-pegada{border-color:var(--pegada);}
+  .day-chip.has-pegada .dc-dot{background:var(--pegada);}
+  .day-chip.has-feriado{border-color:var(--feriado);}
+  .day-chip.has-feriado .dc-dot{background:var(--feriado);}
+  .day-chip.selected{
+    background:var(--accent-dim); transform:translateY(-2px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.3);
+  }
+  .day-chip.selected .dc-label{color:var(--accent);}
+
+  .day-detail-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:16px; margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,0.22);
+  }
+  .day-detail-card.is-feriado{border-color:var(--feriado);}
+  .day-detail-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;
+  }
+  .day-detail-head .dd-title{font-family:'Oswald',sans-serif; font-size:1.2rem;}
+  .day-detail-head .dd-sub{color:var(--muted); font-size:0.78rem; margin-top:1px;}
+  .day-detail-head .dd-amount{
+    font-family:'IBM Plex Mono',monospace; font-size:1.15rem; font-weight:600; color:var(--accent);
+  }
+
+  main{padding:14px 16px 0;}
+
+  .auth-screen{
+    position:fixed; inset:0; background:var(--bg); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .auth-box{width:100%; max-width:380px;}
+  .auth-tab{
+    flex:1; padding:10px; border-radius:9px; border:1px solid var(--line);
+    background:var(--surface); color:var(--muted); font-family:'IBM Plex Sans',sans-serif;
+    font-size:0.82rem; cursor:pointer;
+  }
+  .auth-tab.active{border-color:var(--accent2); color:var(--text); background:var(--surface-2);}
+  .auth-submit{
+    width:100%; margin-top:6px; padding:12px; border-radius:10px; border:none;
+    background:var(--accent); color:var(--bg); font-family:'IBM Plex Sans',sans-serif;
+    font-weight:600; font-size:0.9rem; cursor:pointer;
+  }
+  .auth-error{color:var(--feriado); font-size:0.78rem; margin-top:10px; min-height:1em;}
+  .auth-loading{color:var(--muted); font-size:0.78rem; margin-top:10px;}
+  #loginForm .field, #registerForm .field{margin-bottom:10px;}
+  .admin-row{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; margin-bottom:8px;
+  }
+  .admin-row-top{display:flex; justify-content:space-between; align-items:baseline;}
+  .admin-row-name{font-weight:600; font-size:0.86rem;}
+  .admin-row-dni{color:var(--muted); font-size:0.7rem;}
+  .admin-row-detail{display:flex; justify-content:space-between; font-size:0.76rem; color:var(--muted); margin-top:4px;}
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    margin-bottom:12px;
+    overflow:hidden;
+    box-shadow:0 2px 10px rgba(0,0,0,0.22);
+  }
+  .day-card.is-feriado{ border-color:var(--feriado); }
+  .day-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px;
+    background:var(--surface-2);
+    cursor:pointer;
+    gap:10px;
+  }
+  .day-head-right{display:flex; align-items:center; gap:8px; white-space:nowrap;}
+  .day-head-right .money{font-size:0.92rem; font-weight:600;}
+  .chevron{color:var(--muted); font-size:0.85rem; width:14px; text-align:center;}
+  .tag{margin-left:8px;}
+  .toggle-all-btn{
+    width:100%; margin-top:4px; padding:12px; border-radius:10px;
+    border:1px solid var(--line); background:var(--surface); color:var(--muted);
+    font-family:'IBM Plex Sans',sans-serif; font-size:0.82rem;
+    transition:border-color 0.15s ease, color 0.15s ease;
+  }
+  .toggle-all-btn:active{border-color:var(--accent2); color:var(--text);}
+  .report-footer{
+    font-size:0.68rem; color:var(--muted); text-align:center; line-height:1.5;
+    padding:18px 10px 26px; opacity:0.75;
+  }
+  .day-card.is-feriado .day-head{ background:var(--feriado-dim); }
+  .day-name{font-family:'Oswald',sans-serif; font-size:1.05rem;}
+  .day-date{color:var(--muted); font-size:0.78rem;}
+  .tag{
+    font-size:0.68rem; padding:3px 8px; border-radius:20px; font-weight:600;
+  }
+  .tag-feriado{background:var(--feriado); color:#fff;}
+  .tag-pegada{background:var(--pegada); color:#25200a;}
+  .day-body{padding:0 14px; max-height:0; overflow:hidden; transition:max-height 0.25s ease, padding 0.25s ease;}
+  .day-body.open{padding:10px 14px 12px; max-height:900px;}
+  .turnos{display:flex; gap:6px; margin-bottom:8px;}
+  .turno-btn{
+    flex:1; padding:10px 4px; border-radius:9px; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--text); text-align:center; cursor:pointer;
+  }
+  .turno-btn .t-icon{display:block; margin:0 auto 4px; color:var(--muted);}
+  .turno-btn .t-label{display:block; font-size:0.78rem; font-weight:600;}
+  .turno-btn .t-hora{display:block; font-size:0.66rem; color:var(--muted); margin-top:1px;}
+  .turno-btn{transition:background 0.15s ease, border-color 0.15s ease;}
+  .turno-btn.active{
+    background:var(--good-dim); border-color:var(--good); color:var(--good);
+  }
+  .turno-btn.active .t-icon{color:var(--good);}
+  .turno-btn.active.is-he{
+    background:var(--pegada-dim); border-color:var(--pegada); color:var(--pegada);
+  }
+  .turno-btn.active.is-he .t-icon{color:var(--pegada);}
+  .turno-btn.active .t-hora{color:inherit; opacity:0.85;}
+
+  .extras{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .ops-toggle{margin-top:10px; border-top:1px dashed var(--line); padding-top:8px;}
+  .ops-toggle summary{
+    font-size:0.76rem; color:var(--muted); cursor:pointer; list-style:none;
+  }
+  .ops-toggle summary::-webkit-details-marker{display:none;}
+  .ops-toggle summary::before{content:'▸ '; }
+  .ops-toggle[open] summary::before{content:'▾ '; }
+  .ops-body{margin-top:8px;}
+  .destajo-row{display:flex; gap:6px; margin-top:8px;}
+  .destajo-select{
+    flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:8px 8px; font-size:0.76rem;
+  }
+  .destajo-ton{
+    width:92px; background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:8px 8px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem;
+  }
+  .chip{
+    display:flex; align-items:center; gap:6px;
+    border:1px solid var(--line); border-radius:8px; padding:7px 10px;
+    font-size:0.74rem; color:var(--muted); cursor:pointer;
+    transition:border-color 0.15s ease, color 0.15s ease;
+  }
+  .chip input{accent-color:var(--accent2);}
+  .chip.checked{color:var(--text); border-color:var(--accent2);}
+
+  .day-subtotal{
+    margin-top:10px; padding-top:8px; border-top:1px dashed var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:0.82rem; color:var(--muted);
+  }
+  .day-subtotal .val{color:var(--text); font-weight:600;}
+  .warn{color:var(--feriado); font-size:0.72rem; margin-top:6px;}
+
+  .feriado-note{
+    font-size:0.72rem; color:var(--feriado); padding:0 14px 10px; margin-top:-4px;
+  }
+  .feriado-note-ok{ color:var(--muted); }
+
+  details.settings{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    margin:0 0 14px; padding:2px 14px;
+  }
+  details.settings summary{
+    padding:12px 0; font-family:'Oswald',sans-serif; font-size:0.95rem; cursor:pointer;
+    list-style:none; display:flex; justify-content:space-between; align-items:center;
+  }
+  details.settings summary::-webkit-details-marker{display:none;}
+  .settings-grid{padding:4px 0 14px; display:flex; flex-direction:column; gap:12px;}
+  .field{display:flex; flex-direction:column; gap:4px;}
+  .field label{font-size:0.76rem; color:var(--muted);}
+  .field input, .field select{
+    background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:9px 10px; font-family:'IBM Plex Mono',monospace; font-size:0.9rem;
+  }
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+
+  .summary-bar{
+    background:var(--surface); border:1px solid var(--accent);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:14px;
+  }
+  .summary-top{
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  .summary-top .lbl{font-size:0.82rem; color:var(--accent2); font-weight:500;}
+  .summary-top .total{font-family:'IBM Plex Mono',monospace; font-size:1.3rem; font-weight:600; color:var(--accent);}
+  .summary-detail{
+    max-height:0; overflow:hidden; transition:max-height 0.3s ease;
+  }
+  .summary-detail.open{max-height:80vh; overflow-y:auto; margin-top:10px;}
+  .sd-row{display:flex; justify-content:space-between; font-size:0.8rem; padding:4px 0; color:var(--muted); border-bottom:1px solid var(--line);}
+  .sd-row .val{color:var(--text);}
+  .sd-row.total-row{color:var(--text); font-weight:600; border-bottom:none;}
+  .sd-row.neto-row{color:var(--good); font-weight:700;}
+  .sd-section-label{
+    font-size:0.66rem; color:var(--accent2); text-transform:uppercase;
+    letter-spacing:1.2px; font-weight:600; margin:14px 0 4px;
+  }
+
+  .info-box{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin:0 0 14px; font-size:0.76rem; color:var(--muted); line-height:1.5;
+  }
+  .header-actions{display:flex; gap:8px; margin-top:10px;}
+  .header-actions button{
+    flex:1; padding:9px 6px; border-radius:9px; border:1px solid var(--line);
+    background:var(--surface); color:var(--muted); font-family:'IBM Plex Sans',sans-serif;
+    font-size:0.72rem; cursor:pointer; transition:border-color 0.15s ease, color 0.15s ease;
+  }
+  .header-actions button:active{border-color:var(--accent2); color:var(--text);}
+
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(4,10,15,0.6);
+    z-index:50; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-panel{
+    background:var(--bg); width:100%; max-width:520px; max-height:85vh;
+    border-radius:16px 16px 0 0; border:1px solid var(--line); border-bottom:none;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; border-bottom:1px solid var(--line);
+    font-family:'Oswald',sans-serif; font-size:1rem; flex-shrink:0;
+  }
+  .modal-close{
+    background:var(--surface-2); border:none; color:var(--text);
+    width:30px; height:30px; border-radius:8px; font-size:1rem; cursor:pointer;
+  }
+  .modal-body{padding:14px 16px 24px; overflow-y:auto;}
+
+  .info-box b{color:var(--text);}
+  .legend{display:flex; gap:14px; margin-top:8px; flex-wrap:wrap;}
+  .legend span{display:flex; align-items:center; gap:5px; font-size:0.72rem;}
+  .dot{width:10px; height:10px; border-radius:3px; display:inline-block;}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-box">
+    <div class="brand-strip" style="margin-bottom:16px;">
+      <span>STPP-GSM · Terminal Portuario Paracas</span>
+    </div>
+    <h1 style="font-size:1.3rem; margin-bottom:4px;">Control de Turnos</h1>
+    <div class="subtitle" style="margin-bottom:18px;">Inicia sesión con tu DNI</div>
+
+    <div id="authTabs" style="display:flex; gap:8px; margin-bottom:16px;">
+      <button id="tabLogin" class="auth-tab active">Iniciar sesión</button>
+      <button id="tabRegister" class="auth-tab">Registrarme</button>
+    </div>
+
+    <div id="loginForm">
+      <div class="field"><label>DNI</label><input type="text" id="loginDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos"></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="loginPassword"></div>
+      <button id="loginBtn" class="auth-submit">Ingresar</button>
+    </div>
+
+    <div id="registerForm" style="display:none;">
+      <div class="field"><label>Nombre completo</label><input type="text" id="regNombre"></div>
+      <div class="field"><label>DNI</label><input type="text" id="regDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos"></div>
+      <div class="field">
+        <label>Especialidad</label>
+        <select id="regEspecialidad">
+          <option value="estibador">Estibador</option>
+          <option value="tarjador">Tarjador</option>
+          <option value="capataz">Capataz</option>
+          <option value="winchero">Winchero</option>
+        </select>
+      </div>
+      <div class="field"><label>Contraseña (mínimo 6 caracteres)</label><input type="password" id="regPassword"></div>
+      <div class="field"><label>Confirmar contraseña</label><input type="password" id="regPassword2"></div>
+      <button id="registerBtn" class="auth-submit">Crear cuenta</button>
+    </div>
+
+    <div id="authError" class="auth-error"></div>
+    <div id="authLoading" class="auth-loading" style="display:none;">Procesando...</div>
+  </div>
+</div>
+
+<header>
+  <div class="brand-strip">
+    <input type="text" id="brandName" value="STPP-GSM · Terminal Portuario Paracas" maxlength="60">
+    <span class="brand-line"></span>
+  </div>
+  <div class="title-row">
+    <div>
+      <h1 id="pageTitle">Control de Turnos — Estibador</h1>
+      <div class="subtitle">Terminal Portuario Paracas (PDP)</div>
+    </div>
+    <div style="display:flex; align-items:flex-start; gap:6px;">
+      <div class="badge-stack">
+        <button class="mini-badge" id="monthBadgeBtn">
+          <span class="mb-label">Jornadas</span>
+          <span class="mb-val" id="monthBadgeVal">0/26</span>
+        </button>
+        <button class="mini-badge" id="loanBadgeBtn" style="display:none;">
+          <span class="mb-label">Préstamo</span>
+          <span class="mb-val" id="loanBadgeVal">S/0/S/0</span>
+        </button>
+        <button class="mini-badge" id="earningsBadgeBtn">
+          <span class="mb-label">Acum. mes</span>
+          <span class="mb-val" id="earningsBadgeVal">S/0</span>
+        </button>
+      </div>
+      <div class="corner-menu-wrap">
+        <button id="cornerMenuBtn" class="corner-menu-btn">⋮</button>
+        <div class="corner-menu" id="cornerMenu">
+          <button data-open="settingsModal">⚙ Ajustes de cálculo</button>
+          <button data-open="infoModal">ℹ Cómo se calcula</button>
+          <button data-open="compareModal">📄 Comparar boleta</button>
+          <button id="adminMenuBtn" data-open="adminModal" style="display:none;">👥 Ver todos (Admin)</button>
+          <button id="logoutMenuBtn">🚪 Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="week-nav-pro">
+    <button id="prevWeek" class="wn-arrow">‹</button>
+    <div class="wn-center">
+      <span class="wn-badge" id="weekBadge">Semana —</span>
+      <span class="wn-range" id="weekRangeLabel">—</span>
+    </div>
+    <button id="lockWeekBtn" class="wn-arrow wn-lock" title="Cerrar semana">🔓</button>
+    <button id="nextWeek" class="wn-arrow">›</button>
+  </div>
+
+  <div class="header-total">
+    <div>
+      <div class="lbl">Jornal completo semana</div>
+      <div id="jornadasQuickView" class="lbl" style="margin-top:1px;">0 jornadas</div>
+    </div>
+    <div class="total money" id="totalBruto">S/0.00</div>
+  </div>
+  <div class="header-neto">
+    <span>Descuentos: <span class="money" id="headerDescuentos">-S/0.00</span></span>
+    <span>Neto estimado: <span class="money" id="headerNeto">S/0.00</span></span>
+  </div>
+  <details class="ops-toggle header-breakdown-toggle">
+    <summary>Ver desglose completo del cálculo</summary>
+    <div class="ops-body" id="summaryDetail">
+      <div class="sd-section-label">Jornadas de la semana</div>
+      <div class="sd-row"><span>Jornadas normales</span><span class="val" id="rJornadasNormales">0</span></div>
+      <div class="sd-row"><span>Jornadas en horas extra (pegadas)</span><span class="val" id="rJornadasHE">0</span></div>
+      <div class="sd-row"><span>Jornadas en feriado</span><span class="val" id="rJornadasFeriado">0</span></div>
+      <div class="sd-row"><span>Jornadas en domingo (recargo)</span><span class="val" id="rJornadasDomingo">0</span></div>
+      <div class="sd-row total-row"><span>Total jornadas trabajadas</span><span class="val" id="rTotalJornadas">0</span></div>
+      <div class="sd-section-label">Ingresos</div>
+      <div class="sd-row"><span>Jornada básica</span><span class="val money" id="rJB">S/0.00</span></div>
+      <div class="sd-row"><span>Trabajo en feriado (jornal doble)</span><span class="val money" id="rFER">S/0.00</span></div>
+      <div class="sd-row"><span>Descanso dominical trabajado (jornal doble)</span><span class="val money" id="rDOMG">S/0.00</span></div>
+      <div class="sd-row"><span>Horas extra (pegadas)</span><span class="val money" id="rHE">S/0.00</span></div>
+      <div class="sd-row"><span>Adicionales por barrido/limpieza</span><span class="val money" id="rADI">S/0.00</span></div>
+      <div class="sd-row"><span>Asignación familiar</span><span class="val money" id="rASIGF">S/0.00</span></div>
+      <div class="sd-row"><span>Dominical</span><span class="val money" id="rDOM">S/0.00</span></div>
+      <div class="sd-row"><span>Gratificación (16.67% + 9% extra)</span><span class="val money" id="rGRA">S/0.00</span></div>
+      <div class="sd-row"><span>CTS</span><span class="val money" id="rCTS">S/0.00</span></div>
+      <div class="sd-row"><span>Vacaciones</span><span class="val money" id="rVAC">S/0.00</span></div>
+      <div class="sd-row total-row"><span>Jornal completo (cancelatorio)</span><span class="val money" id="rJORNALCOMPLETO">S/0.00</span></div>
+      <div class="sd-row"><span>Refrigerio + movilidad<span id="rmNote" style="display:block; font-size:0.68rem; color:var(--muted);"></span></span><span class="val money" id="rRM">S/0.00</span></div>
+      <div class="sd-row total-row"><span>Total bruto (jornal completo + refrigerio + movilidad)</span><span class="val money" id="rTOTAL">S/0.00</span></div>
+      <div class="sd-section-label">Descuentos estimados</div>
+      <div class="sd-row"><span id="rAFPLabel">AFP/ONP</span><span class="val money" id="rAFP">S/0.00</span></div>
+      <div class="sd-row"><span>Préstamo (según escala)</span><span class="val money" id="rPREST">S/0.00</span></div>
+      <div class="sd-row"><span>Comedor esta semana (consumos extra)</span><span class="val money"><input type="number" id="comedorSemanaInput" step="0.01" style="width:80px; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:3px 6px; font-family:inherit; text-align:right;"></span></div>
+      <div class="sd-row"><span>Cuota sindical<span id="cuotaSindicalNote" style="display:block; font-size:0.68rem; color:var(--muted);"></span></span><span class="val money" id="rCuotaSindical">S/0.00</span></div>
+      <div class="sd-row"><span id="rRentaLabel">Renta 5ta</span><span class="val money" id="rRentaVal">S/0.00</span></div>
+      <div class="sd-row neto-row"><span>Neto estimado</span><span class="val money" id="rNETO">S/0.00</span></div>
+    </div>
+  </details>
+</header>
+
+<main>
+  <div class="modal-overlay" id="monthModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Jornadas del mes</span><button class="modal-close" data-close="monthModal">✕</button></div>
+      <div class="modal-body">
+        <div class="mini-tracker-row" style="margin-bottom:8px;">
+          <span class="mini-tracker-label" id="monthTrackerLabel">Set: 0/26</span>
+          <div class="mini-tracker-bar"><div class="mini-tracker-fill" id="monthTrackerBarFill" style="width:0%;"></div></div>
+          <span class="mini-tracker-pct" id="monthTrackerPct">0%</span>
+        </div>
+        <div id="monthTrackerNote" style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;">Quedan 26 jornadas disponibles este mes</div>
+        <div class="sd-section-label">Días contados</div>
+        <div id="monthTrackerDaysList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="loanModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Préstamo — acumulado descontado</span><button class="modal-close" data-close="loanModal">✕</button></div>
+      <div class="modal-body">
+        <div class="mini-tracker-row" style="margin-bottom:8px;">
+          <span class="mini-tracker-label">Total</span>
+          <div class="mini-tracker-bar"><div class="mini-tracker-fill" id="loanTrackerBarFill" style="width:0%;"></div></div>
+          <span class="mini-tracker-pct" id="loanTrackerPct">S/0 / S/0</span>
+        </div>
+        <div id="loanTrackerNote" style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;">Ver semanas descontadas</div>
+        <div class="sd-section-label">Semanas con descuento</div>
+        <div id="loanTrackerWeeksList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Vista de administrador</span><button class="modal-close" data-close="adminModal">✕</button></div>
+      <div class="modal-body">
+        <div class="info-box" style="margin:0 0 12px;">
+          Últimos resúmenes semanales guardados por cada trabajador registrado.
+        </div>
+        <div id="adminStatus" style="font-size:0.78rem; color:var(--muted); margin-bottom:10px;">Cargando...</div>
+        <div id="adminList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="compareModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Comparar boleta vs. proyectado</span><button class="modal-close" data-close="compareModal">✕</button></div>
+      <div class="modal-body">
+        <div class="info-box" style="margin:0 0 12px;">
+          Sube el PDF de tu boleta (formato Terminal Portuario Paracas). Se detecta automáticamente la semana por su rango de fechas y se compara con lo proyectado. Si la lectura automática falla, usa los campos manuales de abajo.
+        </div>
+        <div class="field">
+          <label>Archivo PDF de la boleta</label>
+          <input type="file" id="boletaFileInput" accept="application/pdf">
+        </div>
+        <div id="compareStatus" style="font-size:0.78rem; color:var(--muted); margin:8px 0;"></div>
+
+        <details class="ops-toggle" id="manualEntryToggle">
+          <summary>Ingresar montos manualmente en vez de subir el PDF</summary>
+          <div class="ops-body">
+            <div class="field-row">
+              <div class="field"><label>Total ingresos (boleta)</label><input type="number" id="manualIngresos" step="0.01"></div>
+              <div class="field"><label>Total descuentos (boleta)</label><input type="number" id="manualDescuentos" step="0.01"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Neto a pagar (boleta)</label><input type="number" id="manualNeto" step="0.01"></div>
+              <div class="field"><label>Semana (lunes de esa semana)</label><input type="date" id="manualWeekMonday"></div>
+            </div>
+            <button class="toggle-all-btn" id="manualCompareBtn" style="margin-top:6px;">Comparar con estos montos</button>
+          </div>
+        </details>
+
+        <div id="compareResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="earningsModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Acumulado generado del mes</span><button class="modal-close" data-close="earningsModal">✕</button></div>
+      <div class="modal-body">
+        <div class="sd-row total-row" style="margin-bottom:10px;">
+          <span id="earningsMonthLabel">Setiembre 2026</span>
+          <span class="val money" id="earningsMonthTotal">S/0.00</span>
+        </div>
+        <div class="sd-section-label">Por semana</div>
+        <div id="earningsWeeksList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Ajustes de cálculo</span><button class="modal-close" data-close="settingsModal">✕</button></div>
+      <div class="modal-body">
+        <div class="settings-grid">
+          <div class="field">
+            <label>Especialidad</label>
+            <select id="cfgEspecialidad">
+              <option value="estibador">Estibador (S/119.39)</option>
+              <option value="tarjador">Tarjador (S/119.39)</option>
+              <option value="capataz">Capataz (S/130.14)</option>
+              <option value="winchero">Winchero (S/182.88)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Jornal básico por turno (S/) — se ajusta solo, pero puedes editarlo si cambia el convenio</label>
+            <input type="number" id="cfgBasico" step="0.01">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Refrigerio por turno (S/)</label>
+              <input type="number" id="cfgRefri" step="0.01">
+            </div>
+            <div class="field">
+              <label>Movilidad por turno (S/)</label>
+              <input type="number" id="cfgMovil" step="0.01">
+            </div>
+          </div>
+          <div class="field">
+            <label>Sistema de pensión (aplica el descuento exacto de ley)</label>
+            <select id="cfgSistemaPension">
+              <option value="onp">ONP — 13%</option>
+              <option value="habitat">AFP Habitat — 11.37% (10% aporte + 1.37% seguro)</option>
+              <option value="integra">AFP Integra — 11.37% (10% aporte + 1.37% seguro)</option>
+              <option value="prima">AFP Prima — 11.37% (10% aporte + 1.37% seguro, verificado con tu boleta)</option>
+              <option value="profuturo">AFP Profuturo — 11.37% (10% aporte + 1.37% seguro)</option>
+              <option value="manual">Otro / personalizado</option>
+            </select>
+          </div>
+          <div class="field" id="cfgAfpManualField" style="display:none;">
+            <label>Descuento personalizado (%)</label>
+            <input type="number" id="cfgAfp" step="0.01">
+          </div>
+          <div class="sd-section-label">Escala de préstamo semanal (según jornadas trabajadas, incluye feriado y HE)</div>
+          <div class="field-row">
+            <div class="field"><label>6+ días (S/)</label><input type="number" id="cfgP6"></div>
+            <div class="field"><label>5 días (S/)</label><input type="number" id="cfgP5"></div>
+            <div class="field"><label>4 días (S/)</label><input type="number" id="cfgP4"></div>
+          </div>
+          <div class="field">
+            <label>Cuota sindical (S/)</label>
+            <input type="number" id="cfgCuotaSindical" step="0.01">
+          </div>
+          <div class="chip" style="align-self:flex-start;">
+            <input type="checkbox" id="cfgAsignacionFamiliar">
+            <span>Recibe asignación familiar (tiene hijos) — <span id="asigFamiliarMontoLabel">S/4.35</span> por jornada</span>
+          </div>
+          <div class="chip" id="loanToggleChip" style="align-self:flex-start;">
+            <input type="checkbox" id="cfgAplicarPrestamo">
+            <span>Tengo préstamo activo (aplica el descuento automático según la escala de arriba)</span>
+          </div>
+          <div class="chip" style="align-self:flex-start;">
+            <input type="checkbox" id="cfgRentaAuto">
+            <span>Calcular renta de 5ta categoría automáticamente (UIT 2026: S/5,500)</span>
+          </div>
+          <div class="field" id="cfgRentaManualField" style="display:none;">
+            <label>Renta 5ta categ. manual (S/)</label>
+            <input type="number" id="cfgRenta" step="0.01">
+          </div>
+          <div class="field">
+            <label>Ingresos ADICIONALES del año no registrados en la herramienta (S/) — opcional, solo si empezaste a usarla a mitad de año. Lo ya guardado aquí se suma automático.</label>
+            <input type="number" id="cfgIngresosAcumulados" step="0.01">
+          </div>
+          <div class="field">
+            <label>Monto total del préstamo (S/) — para ver el acumulado descontado</label>
+            <input type="number" id="cfgPrestamoTotal" step="0.01">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="infoModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Cómo se calcula</span><button class="modal-close" data-close="infoModal">✕</button></div>
+      <div class="modal-body">
+        <div class="info-box" style="margin:0;">
+          Cada turno normal paga el jornal básico + 50% de colaterales (dominical 16.67% + gratificación 16.67% + 9% extra sobre la gratificación + CTS 8.33% + vacaciones 8.33%) = jornal completo. Si marcas <b>2 turnos consecutivos el mismo día</b> ("pegada": Amanecida→Día o Día→Tarde), el 2do se paga como horas extra (2h al 25% + 6h al 35%). Si el día es <b>feriado</b> se aplica el 100% de recargo al primer turno. Si trabajas <b>de lunes a sábado sin descanso</b>, el domingo también se paga con 100% de recargo. El descuento de AFP/ONP se calcula sobre jornada básica + dominical + vacaciones (excluye gratificación, CTS, refrigerio/movilidad), verificado con boletas reales. En operativas a destajo (harina/pescado congelado) se paga <b>el mayor entre el jornal o el tonelaje</b>, según tu convenio.
+          <div class="legend">
+            <span><i class="dot" style="background:var(--feriado);"></i> Feriado</span>
+            <span><i class="dot" style="background:var(--pegada);"></i> Pegada (2do turno = HE)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="dayStripContainer" class="day-strip"></div>
+  <div id="dayDetailContainer"></div>
+
+  <div class="report-footer">
+    Cálculo referencial elaborado según el Convenio Colectivo STPP-GSM / Terminal Portuario Paracas (PDP) 2026–2027, la Ley N° 27866 y su Reglamento, y las tasas vigentes de AFP/ONP y UIT 2026 (SBS / MEF). Verifica cualquier diferencia con tu boleta de pago o con RR.HH.
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBCsadZfq3MtbrZIidGCFMBG0VOF0gjQ_c",
+  authDomain: "turnos-portuario-pdp.firebaseapp.com",
+  projectId: "turnos-portuario-pdp",
+  storageBucket: "turnos-portuario-pdp.firebasestorage.app",
+  messagingSenderId: "589095178566",
+  appId: "1:589095178566:web:202fc3fb5e5aad6266d547"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+if(window['pdfjsLib']){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+</script>
+<script>
+const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const TURNOS = [
+  {key:'amanecida', label:'Amanecida', hora:'00–08', icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="17" r="4"/><path d="M12 3v4M4.2 10.2l1.4 1.4M19.8 10.2l-1.4 1.4M2 21h20"/></svg>'},
+  {key:'dia', label:'Día', hora:'08–16', icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'},
+  {key:'tarde', label:'Tarde', hora:'16–00', icon:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 1 0 0 12 6 6 0 0 0 6-6c0 4-3 8-8 8a8 8 0 1 1 2-15.7z"/></svg>'}
+];
+
+const FERIADOS_2026 = {
+  '2026-01-01':{label:'Año Nuevo', scope:'nacional'},
+  '2026-01-10':{label:'Día del Trabajador Portuario', scope:'empresa'},
+  '2026-03-13':{label:'Día Central Vendimia Iqueña (Región Ica)', scope:'regional'},
+  '2026-04-02':{label:'Jueves Santo', scope:'nacional'},
+  '2026-04-03':{label:'Viernes Santo', scope:'nacional'},
+  '2026-05-01':{label:'Día del Trabajo', scope:'nacional'},
+  '2026-06-07':{label:'Batalla de Arica y Día de la Bandera', scope:'nacional'},
+  '2026-06-29':{label:'San Pedro y San Pablo', scope:'nacional'},
+  '2026-07-23':{label:'Día de la Fuerza Aérea del Perú', scope:'nacional'},
+  '2026-07-28':{label:'Fiestas Patrias', scope:'nacional'},
+  '2026-07-29':{label:'Fiestas Patrias', scope:'nacional'},
+  '2026-08-06':{label:'Batalla de Junín', scope:'nacional'},
+  '2026-08-30':{label:'Santa Rosa de Lima', scope:'nacional'},
+  '2026-09-08':{label:'Aniversario Desembarco Expedición Libertadora (Paracas / Pisco)', scope:'provincial'},
+  '2026-10-08':{label:'Combate de Angamos', scope:'nacional'},
+  '2026-11-01':{label:'Todos los Santos', scope:'nacional'},
+  '2026-12-08':{label:'Inmaculada Concepción', scope:'nacional'},
+  '2026-12-09':{label:'Batalla de Ayacucho', scope:'nacional'},
+  '2026-12-25':{label:'Navidad', scope:'nacional'}
+};
+
+const TARIFA_HARINA = 1.20;      // S/ por tonelada, embarque harina de pescado en sacos
+const TARIFA_CONGELADO = 2.60;   // S/ por tonelada, embarque pescado congelado
+const BONIF_DESCARGA_CONGELADO = 0.65; // % del jornal básico, mientras dure la actividad
+const BONIF_FRUTA_REEFER = 0.50;       // % del jornal básico, mientras dure la actividad
+const BONIF_JORNADA_SIMPLE = 0.50;     // % del jornal básico, jornada trabajada sin operativa específica
+
+const SPECIALTY_RATES = {
+  estibador: 119.39,
+  tarjador: 119.39,
+  capataz: 130.14,
+  winchero: 182.88
+};
+const SPECIALTY_LABELS = {
+  estibador: 'Estibador',
+  tarjador: 'Tarjador',
+  capataz: 'Capataz',
+  winchero: 'Winchero'
+};
+
+const TASAS_PENSION = {
+  onp: 13.00,
+  habitat: 11.37,
+  integra: 11.37,
+  prima: 11.37,
+  profuturo: 11.37
+  // 11.37% = 10% aporte obligatorio + 1.37% prima de seguro, verificado
+  // con boletas reales (base: jornada básica + dominical + vacaciones).
+  // No se ve una comisión de flujo por separado en las boletas revisadas;
+  // si tu AFP sí te la cobra aparte, usa "Otro / personalizado" en Ajustes.
+  // 'manual' usa CFG.afpPct directamente
+};
+
+const RMV_2026 = 1130; // Remuneración Mínima Vital vigente (D.S. 006-2024-TR)
+const ASIG_FAMILIAR_MENSUAL = RMV_2026 * 0.10; // Ley 25129: 10% de la RMV
+const ASIG_FAMILIAR_POR_JORNADA = ASIG_FAMILIAR_MENSUAL / 26; // prorrateada entre las 26 jornadas del mes
+
+const UIT_2026 = 5500;
+const DEDUCCION_ANUAL = UIT_2026 * 7; // 38,500 — no pagan renta por debajo de esto
+
+function calcularRenta5taSemanal(jornalCompletoSemana, ingresosAcumulados, semanaActualNum){
+  // Proyección acumulada: lo ya ganado en el año + lo que falta (estimado
+  // con el jornal de esta semana × semanas que quedan), en vez de asumir
+  // todo el año igual a esta semana. Se reparte el impuesto entre las
+  // semanas que quedan del año, de forma parecida a como SUNAT reparte la
+  // retención pendiente entre los meses restantes.
+  const semanasRestantes = Math.max(1, 52 - semanaActualNum + 1);
+  const anualProyectado = (ingresosAcumulados||0) + (jornalCompletoSemana * semanasRestantes);
+  const baseImponible = Math.max(0, anualProyectado - DEDUCCION_ANUAL);
+  const tramos = [
+    {hasta: 5*UIT_2026, tasa: 0.08},
+    {hasta: 20*UIT_2026, tasa: 0.14},
+    {hasta: 35*UIT_2026, tasa: 0.17},
+    {hasta: 45*UIT_2026, tasa: 0.20},
+    {hasta: Infinity, tasa: 0.30}
+  ];
+  let restante = baseImponible;
+  let anterior = 0;
+  let impuestoAnual = 0;
+  let tasaMarginal = 0;
+  for(const tramo of tramos){
+    if(restante <= 0) break;
+    const anchoTramo = tramo.hasta - anterior;
+    const montoEnTramo = Math.min(restante, anchoTramo);
+    impuestoAnual += montoEnTramo * tramo.tasa;
+    restante -= montoEnTramo;
+    anterior = tramo.hasta;
+    if(montoEnTramo > 0) tasaMarginal = tramo.tasa;
+  }
+  return {semanal: impuestoAnual / semanasRestantes, tasaMarginal, baseImponible, anualProyectado, semanasRestantes};
+}
+
+let CFG = {
+  especialidad:'estibador', basico:119.39, refri:6.00, movil:6.00,
+  sistemaPension:'onp', afpPct:13.00,
+  p6:200, p5:150, p4:100, cuotaSindical:100, renta:0, rentaAuto:true, aplicarPrestamo:true,
+  tieneAsignacionFamiliar:false, ingresosAcumuladosAnio:0, prestamoTotal:0
+};
+
+let currentMonday = getMonday(new Date());
+let weekData = {}; // {dateISO: {turnos, cuadernas, bodega, operativa, toneladas, descargaCongelado, frutaReefer}}
+let expandedOps = new Set();
+let selectedDayIndex = 0;
+
+function getMonday(d){
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+function isoDate(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fmtMoney(n){
+  return 'S/' + (Math.round(n*100)/100).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function weekKey(monday){ return 'semana-' + isoDate(monday); }
+
+function lsGet(key){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){
+    console.error('No se pudo leer de localStorage', e);
+    return null;
+  }
+}
+function lsSet(key, value){
+  try{
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  }catch(e){
+    console.error('No se pudo guardar en localStorage', e);
+    return false;
+  }
+}
+
+async function loadConfig(){
+  const saved = lsGet('turnos-config-general');
+  if(saved){
+    if(saved.sistemaPension === undefined){
+      // Configuración de una versión anterior a la del selector de AFP/ONP:
+      // se restablecen esos campos a valores correctos en vez de arrastrar
+      // un porcentaje o un préstamo desactualizado.
+      delete saved.afpPct;
+      saved.sistemaPension = 'onp';
+      saved.aplicarPrestamo = true;
+    }
+    CFG = Object.assign(CFG, saved);
+  }
+  applyConfigToInputs();
+}
+async function saveConfig(){
+  lsSet('turnos-config-general', CFG);
+}
+function applyConfigToInputs(){
+  document.getElementById('cfgEspecialidad').value = CFG.especialidad;
+  document.getElementById('cfgBasico').value = CFG.basico;
+  document.getElementById('cfgRefri').value = CFG.refri;
+  document.getElementById('cfgMovil').value = CFG.movil;
+  document.getElementById('cfgSistemaPension').value = CFG.sistemaPension;
+  document.getElementById('cfgAfp').value = CFG.afpPct;
+  document.getElementById('cfgAfpManualField').style.display = CFG.sistemaPension==='manual' ? 'flex' : 'none';
+  document.getElementById('cfgP6').value = CFG.p6;
+  document.getElementById('cfgP5').value = CFG.p5;
+  document.getElementById('cfgP4').value = CFG.p4;
+  document.getElementById('cfgCuotaSindical').value = CFG.cuotaSindical;
+  document.getElementById('cfgRenta').value = CFG.renta;
+  document.getElementById('cfgRentaAuto').checked = CFG.rentaAuto;
+  document.getElementById('cfgRentaManualField').style.display = CFG.rentaAuto ? 'none' : 'flex';
+  document.getElementById('cfgAplicarPrestamo').checked = CFG.aplicarPrestamo;
+  document.getElementById('cfgAsignacionFamiliar').checked = CFG.tieneAsignacionFamiliar;
+  document.getElementById('asigFamiliarMontoLabel').textContent = fmtMoney(ASIG_FAMILIAR_POR_JORNADA);
+  document.getElementById('cfgIngresosAcumulados').value = CFG.ingresosAcumuladosAnio;
+  document.getElementById('cfgPrestamoTotal').value = CFG.prestamoTotal;
+  updateTitle();
+}
+function updateTitle(){
+  document.getElementById('pageTitle').textContent = 'Control de Turnos — ' + SPECIALTY_LABELS[CFG.especialidad];
+}
+function readConfigFromInputs(){
+  CFG.basico = parseFloat(document.getElementById('cfgBasico').value)||0;
+  CFG.refri = parseFloat(document.getElementById('cfgRefri').value)||0;
+  CFG.movil = parseFloat(document.getElementById('cfgMovil').value)||0;
+  CFG.sistemaPension = document.getElementById('cfgSistemaPension').value;
+  CFG.afpPct = parseFloat(document.getElementById('cfgAfp').value)||0;
+  CFG.p6 = parseFloat(document.getElementById('cfgP6').value)||0;
+  CFG.p5 = parseFloat(document.getElementById('cfgP5').value)||0;
+  CFG.p4 = parseFloat(document.getElementById('cfgP4').value)||0;
+  CFG.cuotaSindical = parseFloat(document.getElementById('cfgCuotaSindical').value)||0;
+  CFG.renta = parseFloat(document.getElementById('cfgRenta').value)||0;
+  CFG.rentaAuto = document.getElementById('cfgRentaAuto').checked;
+  CFG.aplicarPrestamo = document.getElementById('cfgAplicarPrestamo').checked;
+  CFG.tieneAsignacionFamiliar = document.getElementById('cfgAsignacionFamiliar').checked;
+  CFG.ingresosAcumuladosAnio = parseFloat(document.getElementById('cfgIngresosAcumulados').value)||0;
+  CFG.prestamoTotal = parseFloat(document.getElementById('cfgPrestamoTotal').value)||0;
+}
+
+async function loadWeek(){
+  weekData = {};
+  const dates = weekDates(currentMonday);
+  const saved = lsGet(weekKey(currentMonday));
+  if(saved){ weekData = saved; }
+  dates.forEach(d=>{
+    const k = isoDate(d);
+    if(!weekData[k]){
+      weekData[k] = {
+        turnos:{amanecida:false,dia:false,tarde:false},
+        cuadernas:false, bodega:false,
+        operativa:'ninguna', toneladas:0,
+        descargaCongelado:false, frutaReefer:false, jornadaSimple:false
+      };
+    } else {
+      // completar campos nuevos si la semana fue guardada con una versión anterior
+      if(weekData[k].operativa===undefined) weekData[k].operativa='ninguna';
+      if(weekData[k].toneladas===undefined) weekData[k].toneladas=0;
+      if(weekData[k].descargaCongelado===undefined) weekData[k].descargaCongelado=false;
+      if(weekData[k].frutaReefer===undefined) weekData[k].frutaReefer=false;
+      if(weekData[k].jornadaSimple===undefined) weekData[k].jornadaSimple=false;
+    }
+  });
+}
+async function saveWeek(){
+  lsSet(weekKey(currentMonday), weekData);
+}
+
+// El descuento de comedor varía cada semana (son consumos extra que uno
+// pide), así que se guarda dentro de los datos de esa semana en vez de
+// ser un valor fijo en Ajustes. Se guarda bajo la llave especial
+// "_comedor" (no es una fecha, así que no interfiere con los días).
+function getWeekComedor(monday, weekDataObj){
+  const obj = weekDataObj !== undefined ? weekDataObj : weekData;
+  return (obj && obj._comedor) || 0;
+}
+function setCurrentWeekComedor(value){
+  weekData._comedor = value;
+}
+
+// Cerrar semana: una vez cerrada, esa semana ya no se puede editar
+// (turnos, operativas, comedor). Se guarda como una marca dentro de los
+// mismos datos de la semana, igual que el comedor.
+function isCurrentWeekLocked(){
+  return !!weekData._locked;
+}
+function renderLockButton(){
+  const btn = document.getElementById('lockWeekBtn');
+  const locked = isCurrentWeekLocked();
+  btn.textContent = locked ? '🔒' : '🔓';
+  btn.title = locked ? 'Semana cerrada · Reabrir' : 'Cerrar semana';
+  btn.className = 'wn-arrow wn-lock' + (locked ? ' locked' : '');
+}
+
+function weekDates(monday){
+  const arr=[];
+  for(let i=0;i<7;i++){
+    const d = new Date(monday);
+    d.setDate(d.getDate()+i);
+    arr.push(d);
+  }
+  return arr;
+}
+
+// Verdadero si el lunes dado es el primer lunes del mes cuyo mes le
+// corresponde (la semana anterior empieza en un mes distinto). Se usa
+// para la cuota sindical, que se descuenta solo una vez al mes.
+function esPrimeraSemanaDelMes(monday){
+  const prevMonday = new Date(monday);
+  prevMonday.setDate(prevMonday.getDate()-7);
+  return prevMonday.getMonth() !== monday.getMonth();
+}
+
+function getISOWeekNumber(d){
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1)/7);
+}
+
+function renderWeekHeader(){
+  const dates = weekDates(currentMonday);
+  const first = dates[0], last = dates[6];
+  const opts = {day:'numeric', month:'short'};
+  const weekNum = getISOWeekNumber(first);
+  document.getElementById('weekBadge').textContent = 'Semana ' + weekNum;
+  document.getElementById('weekRangeLabel').textContent =
+    first.toLocaleDateString('es-PE', opts) + ' — ' + last.toLocaleDateString('es-PE', opts) + ' · ' + first.getFullYear();
+}
+
+function getTurnoRoles(dayData){
+  // Solo se considera "pegada" cuando 2 turnos SEGUIDOS están marcados
+  // (Amanecida->Día o Día->Tarde). Amanecida + Tarde sin el turno de Día
+  // en medio son 2 jornadas independientes, no una pegada.
+  const keys = ['amanecida','dia','tarde'];
+  const marks = keys.map(k=>!!dayData.turnos[k]);
+  const roles = {amanecida:null, dia:null, tarde:null};
+  let esPegada = false, maxRun = 0, i = 0;
+
+  while(i<3){
+    if(marks[i]){
+      let j=i, runKeys=[];
+      while(j<3 && marks[j]){ runKeys.push(keys[j]); j++; }
+      runKeys.forEach((k, idx)=>{ roles[k] = idx===0 ? 'normal' : 'he'; });
+      maxRun = Math.max(maxRun, runKeys.length);
+      if(runKeys.length>=2) esPegada = true;
+      i = j;
+    } else { i++; }
+  }
+  const warning = maxRun>=3 ? 'Supera el máximo de 2 jornadas consecutivas (art. 17 del Reglamento).' : '';
+  return {roles, esPegada, warning};
+}
+
+function countWeekJornadas(){
+  let total = 0;
+  weekDates(currentMonday).forEach(d=>{
+    const k = isoDate(d);
+    const dd = weekData[k];
+    if(!dd) return;
+    const {roles} = getTurnoRoles(dd);
+    TURNOS.forEach(t=>{ if(roles[t.key]) total++; });
+  });
+  return total;
+}
+
+// Descanso semanal trabajado: si se labora de lunes a sábado (índices 0-5
+// de la semana) sin día de descanso, las jornadas del domingo (índice 6)
+// se pagan con 100% de recargo adicional sobre el básico.
+function weekMonToSatComplete(){
+  const dates = weekDates(currentMonday);
+  for(let i=0;i<6;i++){
+    const k = isoDate(dates[i]);
+    const dd = weekData[k];
+    if(!dd || !dd.turnos || !TURNOS.some(t=>dd.turnos[t.key])) return false;
+  }
+  return true;
+}
+
+// Conteo mensual: art. 17 del Reglamento limita a 26 jornadas por mes.
+// El conteo es POR JORNADA (turno), no por día: si un día tiene 2 turnos
+// no consecutivos (ej. Amanecida + Tarde), cuentan como 2 jornadas. Solo si
+// es una "pegada" (2 turnos consecutivos) el segundo NO cuenta, porque ese
+// se paga como horas extra, no como jornada nueva.
+// Recorre día por día el mes, leyendo cada semana guardada que corresponda
+// (una semana puede quedar a caballo entre dos meses).
+function countMonthJornadas(year, monthIndex){
+  const firstDay = new Date(year, monthIndex, 1);
+  const lastDay = new Date(year, monthIndex+1, 0);
+  const weekCache = {};
+  let total = 0;
+  const dias = [];
+
+  for(let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate()+1)){
+    const monday = getMonday(d);
+    const wk = weekKey(monday);
+    if(!(wk in weekCache)) weekCache[wk] = lsGet(wk) || {};
+    const dayKey = isoDate(d);
+    const dayData = weekCache[wk][dayKey];
+    if(dayData && dayData.turnos && TURNOS.some(t=>dayData.turnos[t.key])){
+      const {roles, esPegada} = getTurnoRoles(dayData);
+      const turnosNormales = TURNOS.filter(t=>roles[t.key]==='normal');
+      const jornadasDelDia = turnosNormales.length;
+      total += jornadasDelDia;
+      dias.push({
+        fecha: new Date(d),
+        esPegada,
+        jornadasDelDia,
+        turnos: TURNOS.filter(t=>dayData.turnos[t.key]).map(t=>t.label)
+      });
+    }
+  }
+  return {total, dias};
+}
+
+function renderMonthlyTracker(){
+  const monday = currentMonday;
+  const year = monday.getFullYear();
+  const monthIndex = monday.getMonth();
+  const {total: count, dias} = countMonthJornadas(year, monthIndex);
+  const limite = 26;
+  const pct = Math.min(100, (count/limite)*100);
+  const monthName3 = monday.toLocaleDateString('es-PE', {month:'short'}).replace('.','');
+
+  let statusClass = 'ok';
+  if(count >= limite) statusClass = 'over';
+  else if(count >= 20) statusClass = 'warn';
+
+  document.getElementById('monthTrackerLabel').textContent = `${monthName3}: ${count}/${limite}`;
+  document.getElementById('monthTrackerBarFill').style.width = pct + '%';
+  document.getElementById('monthTrackerPct').textContent = Math.round(pct) + '%';
+  document.getElementById('monthBadgeVal').textContent = `${count}/${limite}`;
+  document.getElementById('monthBadgeBtn').className = 'mini-badge ' + statusClass;
+
+  const noteEl = document.getElementById('monthTrackerNote');
+  if(count >= limite){
+    noteEl.textContent = `⚠ Superaste el máximo legal de ${limite} jornadas (art. 17)`;
+  } else {
+    noteEl.textContent = `Quedan ${limite-count} jornadas disponibles este mes`;
+  }
+
+  const listEl = document.getElementById('monthTrackerDaysList');
+  if(dias.length === 0){
+    listEl.innerHTML = '<div class="month-day-row" style="color:var(--muted);">Aún no hay jornadas marcadas este mes.</div>';
+  } else {
+    listEl.innerHTML = dias.map(dd=>{
+      const fechaLabel = dd.fecha.toLocaleDateString('es-PE', {weekday:'short', day:'numeric', month:'short'});
+      const jornadasLabel = dd.jornadasDelDia + (dd.jornadasDelDia===1 ? ' jornada' : ' jornadas');
+      const pegadaTag = dd.esPegada ? ' <span class="tag tag-pegada">pegada, 2do turno no cuenta</span>' : '';
+      return `<div class="month-day-row"><span>${fechaLabel} · ${dd.turnos.join(' + ')}</span><span>${jornadasLabel}${pegadaTag}</span></div>`;
+    }).join('');
+  }
+}
+
+// Recorre TODAS las semanas guardadas en localStorage (no solo el mes
+// actual) y calcula, semana por semana, cuánto se habría descontado de
+// préstamo según la escala vigente — para ver el acumulado real pagado.
+function getAllWeekKeys(){
+  const keys = [];
+  for(let i=0; i<localStorage.length; i++){
+    const key = localStorage.key(i);
+    if(key && key.startsWith('semana-')) keys.push(key);
+  }
+  return keys.sort();
+}
+
+function countLoanAccumulated(){
+  const weekKeys = getAllWeekKeys();
+  let acumulado = 0;
+  const semanas = [];
+
+  weekKeys.forEach(wk=>{
+    const data = lsGet(wk) || {};
+    const mondayISO = wk.replace('semana-', '');
+    let totalJornadasSemana = 0;
+    Object.keys(data).forEach(dayKey=>{
+      const dd = data[dayKey];
+      if(dd && dd.turnos){
+        const {roles} = getTurnoRoles(dd);
+        TURNOS.forEach(t=>{ if(roles[t.key]) totalJornadasSemana++; });
+      }
+    });
+    let prestamoSemana = 0;
+    if(totalJornadasSemana>=6) prestamoSemana = CFG.p6;
+    else if(totalJornadasSemana===5) prestamoSemana = CFG.p5;
+    else if(totalJornadasSemana===4) prestamoSemana = CFG.p4;
+    if(prestamoSemana>0){
+      acumulado += prestamoSemana;
+      semanas.push({mondayISO, totalJornadasSemana, prestamoSemana});
+    }
+  });
+
+  return {acumulado, semanas};
+}
+
+function renderLoanTracker(){
+  const badge = document.getElementById('loanBadgeBtn');
+  if(!CFG.aplicarPrestamo || CFG.prestamoTotal<=0){
+    badge.style.display = 'none';
+    return;
+  }
+  badge.style.display = 'flex';
+
+  const {acumulado, semanas} = countLoanAccumulated();
+  const pct = Math.min(100, (acumulado/CFG.prestamoTotal)*100);
+
+  let statusClass = 'ok';
+  if(acumulado >= CFG.prestamoTotal) statusClass = 'over';
+  else if(pct >= 80) statusClass = 'warn';
+
+  badge.className = 'mini-badge ' + statusClass;
+  document.getElementById('loanBadgeVal').textContent = `${Math.round(acumulado)}/${Math.round(CFG.prestamoTotal)}`;
+  document.getElementById('loanTrackerBarFill').style.width = pct + '%';
+  document.getElementById('loanTrackerPct').textContent = `${fmtMoney(acumulado)} / ${fmtMoney(CFG.prestamoTotal)}`;
+
+  const noteEl = document.getElementById('loanTrackerNote');
+  if(acumulado >= CFG.prestamoTotal){
+    noteEl.textContent = `✓ Préstamo cubierto (${Math.round(pct)}%) — ver semanas`;
+  } else {
+    noteEl.textContent = `${Math.round(pct)}% pagado · faltan ${fmtMoney(CFG.prestamoTotal-acumulado)} — ver semanas`;
+  }
+
+  const listEl = document.getElementById('loanTrackerWeeksList');
+  if(semanas.length === 0){
+    listEl.innerHTML = '<div class="month-day-row" style="color:var(--muted);">Aún no hay descuentos registrados.</div>';
+  } else {
+    listEl.innerHTML = semanas.map(s=>{
+      const d = new Date(s.mondayISO + 'T00:00:00');
+      const label = d.toLocaleDateString('es-PE', {day:'numeric', month:'short', year:'numeric'});
+      return `<div class="month-day-row"><span>Semana del ${label} (${s.totalJornadasSemana} jornadas)</span><span>${fmtMoney(s.prestamoSemana)}</span></div>`;
+    }).join('');
+  }
+}
+
+// --- Acumulado generado del mes ---
+// A diferencia del conteo de jornadas, aquí sumamos el monto en soles
+// (jornal completo del día) generado cada semana, atribuyendo cada día al
+// mes calendario al que pertenece (una semana puede cruzar dos meses).
+function computeMonToSatCompleteFor(weekDataObj, dates){
+  for(let i=0;i<6;i++){
+    const k = isoDate(dates[i]);
+    const dd = weekDataObj[k];
+    if(!dd || !dd.turnos || !TURNOS.some(t=>dd.turnos[t.key])) return false;
+  }
+  return true;
+}
+function computeWeekJornadasFor(weekDataObj, dates){
+  let total = 0;
+  dates.forEach(d=>{
+    const k = isoDate(d);
+    const dd = weekDataObj[k];
+    if(!dd) return;
+    const {roles} = getTurnoRoles(dd);
+    TURNOS.forEach(t=>{ if(roles[t.key]) total++; });
+  });
+  return total;
+}
+const DEFAULT_DAY_DATA = {
+  turnos:{amanecida:false,dia:false,tarde:false}, cuadernas:false, bodega:false,
+  operativa:'ninguna', toneladas:0, descargaCongelado:false, frutaReefer:false, jornadaSimple:false
+};
+function computeWeekDayAmounts(monday, weekDataObj){
+  const dates = weekDates(monday);
+  const monToSatComplete = computeMonToSatCompleteFor(weekDataObj, dates);
+  const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates);
+  const aplicaRM = totalJornadasWeek >= 7;
+  const map = {};
+  dates.forEach((d,i)=>{
+    const k = isoDate(d);
+    const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
+    const domingoRecargo = (i===6) && monToSatComplete;
+    const result = computeDay(k, dayData, aplicaRM, domingoRecargo);
+    map[k] = result.subtotalDia;
+  });
+  return map;
+}
+function countMonthEarnings(year, monthIndex){
+  const firstDay = new Date(year, monthIndex, 1);
+  const lastDay = new Date(year, monthIndex+1, 0);
+  const weekCache = {};
+  const porSemana = {};
+  let total = 0;
+  for(let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate()+1)){
+    const monday = getMonday(d);
+    const wk = weekKey(monday);
+    if(!(wk in weekCache)){
+      const weekDataObj = lsGet(wk) || {};
+      weekCache[wk] = computeWeekDayAmounts(monday, weekDataObj);
+    }
+    const k = isoDate(d);
+    const amount = weekCache[wk][k] || 0;
+    total += amount;
+    if(amount>0){
+      porSemana[wk] = (porSemana[wk]||0) + amount;
+    }
+  }
+  return {total, porSemana};
+}
+
+// Suma automáticamente lo generado (total bruto) desde el 1 de enero hasta
+// el día ANTERIOR al lunes de la semana dada, usando el historial guardado.
+// Esto reemplaza tener que llenar "ingresos acumulados" a mano.
+function countYearEarningsBefore(monday){
+  const year = monday.getFullYear();
+  const firstDay = new Date(year, 0, 1);
+  const lastDay = new Date(monday);
+  lastDay.setDate(lastDay.getDate()-1);
+  if(lastDay < firstDay) return 0;
+  const weekCache = {};
+  let total = 0;
+  for(let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate()+1)){
+    const dMonday = getMonday(d);
+    const wk = weekKey(dMonday);
+    if(!(wk in weekCache)){
+      const weekDataObj = lsGet(wk) || {};
+      weekCache[wk] = computeWeekDayAmounts(dMonday, weekDataObj);
+    }
+    total += weekCache[wk][isoDate(d)] || 0;
+  }
+  return total;
+}
+// Sube a la nube (Firestore) el resumen calculado de la semana actual, para
+// que RRHH/admin pueda verlo centralizado. Con debounce para no escribir en
+// cada toque, solo cuando la persona deja de interactuar un momento.
+let syncTimeout = null;
+function scheduleWeekSync(bruto, descuentos, neto, jornadas){
+  if(!currentUserProfile) return;
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(async ()=>{
+    try{
+      await db.collection('usuarios').doc(currentUserProfile.dni)
+        .collection('resumenes').doc(weekKey(currentMonday))
+        .set({
+          semana: weekKey(currentMonday),
+          bruto, descuentos, neto, jornadas,
+          actualizado: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }catch(err){ console.error('No se pudo sincronizar con la nube', err); }
+  }, 1500);
+}
+
+function renderMonthEarnings(){
+  const monday = currentMonday;
+  const year = monday.getFullYear();
+  const monthIndex = monday.getMonth();
+  const {total, porSemana} = countMonthEarnings(year, monthIndex);
+  const monthNameFull = monday.toLocaleDateString('es-PE', {month:'long', year:'numeric'});
+
+  document.getElementById('earningsBadgeVal').textContent = fmtMoney(total).replace('S/','');
+  document.getElementById('earningsMonthLabel').textContent = monthNameFull.charAt(0).toUpperCase()+monthNameFull.slice(1);
+  document.getElementById('earningsMonthTotal').textContent = fmtMoney(total);
+
+  const listEl = document.getElementById('earningsWeeksList');
+  const weekKeysSorted = Object.keys(porSemana).sort();
+  if(weekKeysSorted.length === 0){
+    listEl.innerHTML = '<div class="month-day-row" style="color:var(--muted);">Aún no hay ingresos registrados este mes.</div>';
+  } else {
+    listEl.innerHTML = weekKeysSorted.map(wk=>{
+      const mondayISO = wk.replace('semana-','');
+      const d = new Date(mondayISO+'T00:00:00');
+      const label = d.toLocaleDateString('es-PE', {day:'numeric', month:'short'});
+      return `<div class="month-day-row"><span>Semana del ${label}</span><span>${fmtMoney(porSemana[wk])}</span></div>`;
+    }).join('');
+  }
+}
+
+// --- Comparar boleta vs. proyectado ---
+// Resumen completo de una semana arbitraria (no necesariamente la que se
+// está viendo), reutilizando la misma lógica de cálculo que el resto de
+// la herramienta, para poder comparar semanas pasadas contra su boleta real.
+function computeWeekSummary(monday, weekDataObj){
+  const dates = weekDates(monday);
+  const monToSatComplete = computeMonToSatCompleteFor(weekDataObj, dates);
+  const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates);
+  const aplicaRM = totalJornadasWeek >= 7;
+  let JB=0,FER=0,DOMG=0,HE=0,ADI=0,ASIGF=0,RM=0;
+  let jornadasNormales=0,jornadasHE=0,jornadasFeriado=0,jornadasDomingo=0;
+
+  dates.forEach((d,i)=>{
+    const k = isoDate(d);
+    const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
+    const domingoRecargo = (i===6) && monToSatComplete;
+    const r = computeDay(k, dayData, aplicaRM, domingoRecargo);
+    JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross;
+    ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
+    jornadasNormales+=r.jornadasNormales; jornadasHE+=r.jornadasHE;
+    jornadasFeriado+=r.jornadasFeriado; jornadasDomingo+=r.jornadasDomingo;
+  });
+
+  const totalJornadas = jornadasNormales+jornadasHE+jornadasFeriado+jornadasDomingo;
+  const base = JB+HE+FER+DOMG;
+  const dominical = 0.1667*CFG.basico*(jornadasNormales+jornadasFeriado+jornadasDomingo);
+  const gratificacion = 0.1667*base;
+  const bonifExtra = 0.09*gratificacion;
+  const cts = 0.0833*base;
+  const vacaciones = 0.0833*base;
+  const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
+  const totalBruto = jornalCompleto+RM;
+
+  // Base de cálculo AFP/ONP verificada con boletas reales: jornada básica
+  // (incl. feriado/domingo) + dominical + vacaciones — excluye
+  // gratificación, bonif. extra, CTS, refrigerio/movilidad y adicionales.
+  const baseAFP = JB+FER+DOMG+dominical+vacaciones;
+  const afp = baseAFP*(CFG.afpPct/100);
+  let prestamo = 0;
+  if(CFG.aplicarPrestamo){
+    if(totalJornadas>=6) prestamo=CFG.p6; else if(totalJornadas===5) prestamo=CFG.p5; else if(totalJornadas===4) prestamo=CFG.p4;
+  }
+  const renta = CFG.rentaAuto ? calcularRenta5taSemanal(jornalCompleto, CFG.ingresosAcumuladosAnio, getISOWeekNumber(monday)).semanal : CFG.renta;
+  const cuotaSindicalSemana = esPrimeraSemanaDelMes(monday) ? CFG.cuotaSindical : 0;
+  const comedorSemana = getWeekComedor(monday, weekDataObj);
+  const totalDescuentos = afp+prestamo+comedorSemana+cuotaSindicalSemana+renta;
+  const neto = totalBruto-totalDescuentos;
+
+  return {totalBruto, totalDescuentos, neto, totalJornadas};
+}
+
+// Extrae los montos conocidos del texto plano de la boleta (formato PDP),
+// buscando cada etiqueta seguida de su monto en cualquier parte del texto
+// extraído (más tolerante al desorden de columnas que un PDF tabular
+// puede producir al extraer texto).
+function parseBoletaText(text){
+  const flat = text.replace(/\s+/g,' ');
+  const buscar = (regex) => {
+    const m = flat.match(regex);
+    return m ? parseFloat(m[1].replace(/,/g,'')) : null;
+  };
+  const fechaMatch = flat.match(/DEL\s+(\d{2}\/\d{2}\/\d{4})\s+AL\s+(\d{2}\/\d{2}\/\d{4})/i);
+
+  return {
+    fechaInicio: fechaMatch ? fechaMatch[1] : null,
+    fechaFin: fechaMatch ? fechaMatch[2] : null,
+    totalIngresos: buscar(/TOTAL\s+INGRESOS\s+([\d,]+\.\d{2})/i),
+    totalDescuentos: buscar(/TOTAL\s+DESCUENTOS\s+([\d,]+\.\d{2})/i),
+    neto: buscar(/NETO\s+A\s+PAGAR\s+([\d,]+\.\d{2})/i)
+  };
+}
+
+function ddmmyyyyToMonday(ddmmyyyy){
+  const [dd,mm,yyyy] = ddmmyyyy.split('/').map(Number);
+  const d = new Date(yyyy, mm-1, dd);
+  return getMonday(d);
+}
+
+function renderCompareResult(parsed, monday){
+  const wk = weekKey(monday);
+  const weekDataObj = lsGet(wk) || {};
+  const proj = computeWeekSummary(monday, weekDataObj);
+  const rangeLabel = monday.toLocaleDateString('es-PE',{day:'numeric',month:'short'}) + ' — ' +
+    (()=>{ const s=new Date(monday); s.setDate(s.getDate()+6); return s.toLocaleDateString('es-PE',{day:'numeric',month:'short'}); })();
+
+  const rows = [
+    ['Total ingresos', proj.totalBruto, parsed.totalIngresos],
+    ['Total descuentos', proj.totalDescuentos, parsed.totalDescuentos],
+    ['Neto a pagar', proj.neto, parsed.neto]
+  ];
+
+  document.getElementById('compareResults').innerHTML = `
+    <div class="sd-section-label">Semana del ${rangeLabel}</div>
+    ${rows.map(([label, proyectado, real])=>{
+      if(real===null || real===undefined) return '';
+      const diff = proyectado - real;
+      const diffOk = Math.abs(diff) < 1;
+      return `<div class="sd-row"><span>${label}</span><span class="val">
+        <span class="money">${fmtMoney(proyectado)}</span> vs
+        <span class="money">${fmtMoney(real)}</span>
+        <span style="color:${diffOk?'var(--good)':'var(--feriado)'}; font-weight:600;"> (${diff>=0?'+':''}${fmtMoney(diff)})</span>
+      </span></div>`;
+    }).join('')}
+    <div style="font-size:0.7rem; color:var(--muted); margin-top:8px;">Izquierda: proyectado por la herramienta · Derecha: tu boleta real. Diferencias menores a S/1 se consideran coincidencia (redondeos).</div>
+  `;
+}
+
+async function handleBoletaFile(file){
+  const statusEl = document.getElementById('compareStatus');
+  if(!window['pdfjsLib']){
+    statusEl.textContent = 'No se pudo cargar el lector de PDF. Usa la entrada manual de abajo.';
+    return;
+  }
+  statusEl.textContent = 'Leyendo PDF...';
+  try{
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+    let fullText = '';
+    for(let i=1; i<=pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      fullText += content.items.map(it=>it.str).join(' ') + ' ';
+    }
+    const parsed = parseBoletaText(fullText);
+    if(!parsed.fechaInicio){
+      statusEl.textContent = '⚠ No se pudo detectar el rango de fechas de la boleta. Usa la entrada manual de abajo.';
+      return;
+    }
+    if(parsed.totalIngresos===null && parsed.neto===null){
+      statusEl.textContent = '⚠ No se pudieron leer los montos (el PDF puede tener las columnas desordenadas). Usa la entrada manual de abajo.';
+      return;
+    }
+    statusEl.textContent = `✓ Boleta leída: semana del ${parsed.fechaInicio} al ${parsed.fechaFin}`;
+    renderCompareResult(parsed, ddmmyyyyToMonday(parsed.fechaInicio));
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = '⚠ No se pudo leer el PDF. Usa la entrada manual de abajo.';
+  }
+}
+
+function computeDay(dateISO, dayData, aplicaRM, domingoRecargo){
+  const feriadoInfo = FERIADOS_2026[dateISO];
+  const isFeriado = !!feriadoInfo;
+  // Confirmado por el usuario: en PDP se paga como feriado con 100% de recargo
+  // TODOS los feriados listados (nacionales, el regional de Ica y el
+  // provincial/institucional de Pisco/Paracas), no solo los nacionales.
+  const incluirRecargo = isFeriado;
+  // Descanso semanal trabajado: si se laboró de lunes a sábado, el domingo
+  // se paga con 100% de recargo adicional (igual que un feriado). No se
+  // duplica si el domingo además coincide con un feriado del calendario.
+  const aplicarRecargoDomingo = domingoRecargo && !isFeriado;
+  const {roles, esPegada, warning} = getTurnoRoles(dayData);
+
+  let jornadaBasica=0, feriadoGross=0, domingoGross=0, heGross=0, refriMov=0, adicionales=0, asignacionFamiliar=0;
+  let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0;
+
+  TURNOS.forEach(t=>{
+    const role = roles[t.key];
+    if(!role) return;
+    // Refrigerio y movilidad se pagan por cada jornada, sin umbral —
+    // confirmado con la boleta real (revertido: no depende de llegar a
+    // la 7ma jornada).
+    refriMov += CFG.refri + CFG.movil;
+    if(role==='normal'){
+      // Asignación familiar: 1/26 por cada jornada efectivamente laborada
+      // (solo para quienes tienen hijos y activaron la casilla).
+      if(CFG.tieneAsignacionFamiliar) asignacionFamiliar += ASIG_FAMILIAR_POR_JORNADA;
+      if(isFeriado && incluirRecargo){
+        feriadoGross += CFG.basico*2;
+        jornadasFeriado++;
+      } else if(aplicarRecargoDomingo){
+        domingoGross += CFG.basico*2;
+        jornadasDomingo++;
+      } else {
+        jornadaBasica += CFG.basico;
+        jornadasNormales++;
+      }
+    } else {
+      const valorHora = CFG.basico/8;
+      heGross += (2*valorHora*1.25) + (6*valorHora*1.35);
+      jornadasHE++;
+    }
+  });
+
+  if(dayData.cuadernas) adicionales += CFG.basico*0.50;
+  if(dayData.bodega) adicionales += CFG.basico*0.55;
+  if(dayData.descargaCongelado) adicionales += CFG.basico*BONIF_DESCARGA_CONGELADO;
+  if(dayData.frutaReefer) adicionales += CFG.basico*BONIF_FRUTA_REEFER;
+  if(dayData.jornadaSimple) adicionales += CFG.basico*BONIF_JORNADA_SIMPLE;
+
+  // Tarifa por tonelada (destajo): "se aplicará el pago, o por jornada o por
+  // tonelada, el que sea mayor" (Cláusula Tercera del convenio).
+  let tonelajePay = 0;
+  if(dayData.operativa === 'harina') tonelajePay = (dayData.toneladas||0) * TARIFA_HARINA;
+  else if(dayData.operativa === 'congelado') tonelajePay = (dayData.toneladas||0) * TARIFA_CONGELADO;
+
+  if(tonelajePay > 0){
+    const baseJornadaDelDia = jornadaBasica + feriadoGross + domingoGross;
+    if(tonelajePay > baseJornadaDelDia){
+      jornadaBasica = tonelajePay;
+      feriadoGross = 0;
+      domingoGross = 0;
+    }
+  }
+
+  const diasTrabajados = TURNOS.some(t=>dayData.turnos[t.key]) ? 1 : 0;
+  // Los "adicionales" (barridos, bonos por operativa, jornada simple) se
+  // calculan sobre el jornal básico y se suman como monto plano — no entran
+  // a la base de gratificación/CTS/vacaciones, para que el % quede
+  // exactamente sobre el básico (S/119.39) y no se infle con colaterales.
+  const baseColaterales = jornadaBasica+feriadoGross+domingoGross+heGross;
+  // Dominical corregida según boleta real: 16.67% × básico × cantidad de
+  // días trabajados (el feriado/domingo cuenta como 1 día a básico simple
+  // para este cálculo, no por su monto doblado).
+  const diasEquivalentesDia = jornadasNormales+jornadasFeriado+jornadasDomingo;
+  const dominicalDia = 0.1667*CFG.basico*diasEquivalentesDia;
+  const gratificacionDia = 0.1667*baseColaterales;
+  const bonifExtraDia = 0.09*gratificacionDia;
+  const ctsDia = 0.0833*baseColaterales;
+  const vacacionesDia = 0.0833*baseColaterales;
+  const jornalCompletoDia = baseColaterales+adicionales+asignacionFamiliar+dominicalDia+gratificacionDia+bonifExtraDia+ctsDia+vacacionesDia;
+  const subtotalDia = jornalCompletoDia+refriMov;
+
+  return {jornadaBasica, feriadoGross, domingoGross, heGross, refriMov, adicionales, asignacionFamiliar, dominicalDia, gratificacionDia, bonifExtraDia, ctsDia, vacacionesDia, subtotalDia, isFeriado, feriadoInfo, aplicarRecargoDomingo, esPegada, warning, diasTrabajados, jornadasNormales, jornadasHE, jornadasFeriado, jornadasDomingo, roles};
+}
+
+function buildDayChipHTML(k, i, d, aplicaRM){
+  const dayData = weekData[k];
+  const domingoRecargo = (i===6) && weekMonToSatComplete();
+  const result = computeDay(k, dayData, aplicaRM, domingoRecargo);
+  const dayLabel3 = DIAS[i].slice(0,3);
+  const dateNum = d.getDate();
+
+  let statusClass = '';
+  if(result.isFeriado || result.aplicarRecargoDomingo) statusClass = 'has-feriado';
+  else if(result.esPegada) statusClass = 'has-pegada';
+  else if(result.diasTrabajados) statusClass = 'has-work';
+
+  const selectedClass = i===selectedDayIndex ? 'selected' : '';
+  const amountLabel = result.diasTrabajados ? fmtMoney(result.subtotalDia).replace('S/','') : '—';
+
+  return `<button class="day-chip ${statusClass} ${selectedClass}" data-day-index="${i}">
+    <span class="dc-dot"></span>
+    <span class="dc-label">${dayLabel3}</span>
+    <span class="dc-date">${dateNum}</span>
+    <span class="dc-amount">${amountLabel}</span>
+  </button>`;
+}
+
+function buildDayDetailHTML(k, i, d, aplicaRM){
+  const dayData = weekData[k];
+  const locked = isCurrentWeekLocked();
+  const domingoRecargo = (i===6) && weekMonToSatComplete();
+  const result = computeDay(k, dayData, aplicaRM, domingoRecargo);
+  const dateLabel = d.toLocaleDateString('es-PE',{weekday:'long', day:'numeric', month:'long'});
+
+  let tagsHtml = '';
+  if(locked) tagsHtml += `<span class="locked-tag">🔒 Cerrada</span>`;
+  if(result.isFeriado) tagsHtml += `<span class="tag tag-feriado">Feriado</span>`;
+  if(result.aplicarRecargoDomingo) tagsHtml += `<span class="tag tag-feriado" style="margin-left:6px;">Descanso dominical +100%</span>`;
+  if(result.esPegada) tagsHtml += `<span class="tag tag-pegada" style="margin-left:6px;">Pegada</span>`;
+
+  const opsOpen = expandedOps.has(k);
+
+  let noteHtml = '';
+  if(result.isFeriado && result.feriadoInfo.scope !== 'nacional'){
+    const scopeLabel = result.feriadoInfo.scope==='regional' ? 'regional (Ica)' : result.feriadoInfo.scope==='provincial' ? 'provincial (Pisco)' : 'propio de PDP';
+    noteHtml = `<div class="feriado-note feriado-note-ok">${result.feriadoInfo.label} — feriado ${scopeLabel}, pagado con 100% de recargo según la práctica confirmada en PDP.</div>`;
+  } else if(result.aplicarRecargoDomingo){
+    noteHtml = `<div class="feriado-note feriado-note-ok">Trabajaste de lunes a sábado sin día de descanso — este domingo se paga con 100% de recargo adicional sobre el básico.</div>`;
+  }
+
+  return `<div class="day-detail-card ${result.isFeriado?'is-feriado':''} ${locked?'locked':''}" id="day-wrap-${k}">
+    <div class="day-detail-head">
+      <div>
+        <div class="dd-title">${DIAS[i]}</div>
+        <div class="dd-sub">${dateLabel} ${tagsHtml}</div>
+      </div>
+      <div class="dd-amount">${fmtMoney(result.subtotalDia)}</div>
+    </div>
+    <div class="turnos">
+      ${TURNOS.map(t=>{
+        const role = result.roles[t.key];
+        const active = !!role;
+        const isHe = role==='he';
+        return `<div class="turno-btn ${active?'active':''} ${isHe?'is-he':''}" data-date="${k}" data-turno="${t.key}">
+                  <span class="t-icon">${t.icon}</span>
+                  <span class="t-label">${t.label}</span>
+                  <span class="t-hora">${t.hora}${isHe?' · HE':''}</span>
+                </div>`;
+      }).join('')}
+    </div>
+    <details class="ops-toggle" data-ops="${k}" ${opsOpen?'open':''}>
+      <summary>Operativas especiales (barridos, bonos, destajo)</summary>
+      <div class="ops-body">
+        <div class="extras">
+          <label class="chip ${dayData.cuadernas?'checked':''}">
+            <input type="checkbox" data-date="${k}" data-extra="cuadernas" ${dayData.cuadernas?'checked':''}>
+            Limpieza cuadernas Slag/Clinker (50%)
+          </label>
+          <label class="chip ${dayData.bodega?'checked':''}">
+            <input type="checkbox" data-date="${k}" data-extra="bodega" ${dayData.bodega?'checked':''}>
+            Limpieza bodega chatarra (55%)
+          </label>
+          <label class="chip ${dayData.descargaCongelado?'checked':''}">
+            <input type="checkbox" data-date="${k}" data-extra="descargaCongelado" ${dayData.descargaCongelado?'checked':''}>
+            Descarga pescado congelado (+65% jornal)
+          </label>
+          <label class="chip ${dayData.frutaReefer?'checked':''}">
+            <input type="checkbox" data-date="${k}" data-extra="frutaReefer" ${dayData.frutaReefer?'checked':''}>
+            Embarque fruta barco reefer (+50% jornal)
+          </label>
+          <label class="chip ${dayData.jornadaSimple?'checked':''}">
+            <input type="checkbox" data-date="${k}" data-extra="jornadaSimple" ${dayData.jornadaSimple?'checked':''}>
+            Solo jornada, sin operativa específica (+50% jornal)
+          </label>
+        </div>
+        <div class="destajo-row">
+          <select class="destajo-select" data-date="${k}">
+            <option value="ninguna" ${dayData.operativa==='ninguna'?'selected':''}>Sin destajo (solo jornal)</option>
+            <option value="harina" ${dayData.operativa==='harina'?'selected':''}>Embarque harina de pescado (S/1.20/ton)</option>
+            <option value="congelado" ${dayData.operativa==='congelado'?'selected':''}>Embarque pescado congelado (S/2.60/ton)</option>
+          </select>
+          ${dayData.operativa!=='ninguna' ? `
+          <input type="number" class="destajo-ton" data-date="${k}" placeholder="Toneladas" step="0.01" value="${dayData.toneladas||''}">
+          ` : ''}
+        </div>
+      </div>
+    </details>
+    ${result.warning ? `<div class="warn">⚠ ${result.warning}</div>` : ''}
+    ${noteHtml}
+  </div>`;
+}
+
+function renderDayStrip(){
+  const dates = weekDates(currentMonday);
+  const aplicaRM = countWeekJornadas() >= 7;
+  const strip = document.getElementById('dayStripContainer');
+  strip.innerHTML = dates.map((d,i)=>buildDayChipHTML(isoDate(d), i, d, aplicaRM)).join('');
+}
+
+function renderDayDetail(){
+  const dates = weekDates(currentMonday);
+  const aplicaRM = countWeekJornadas() >= 7;
+  const k = isoDate(dates[selectedDayIndex]);
+  document.getElementById('dayDetailContainer').innerHTML =
+    buildDayDetailHTML(k, selectedDayIndex, dates[selectedDayIndex], aplicaRM);
+}
+
+function renderDays(){
+  renderLockButton();
+  renderDayStrip();
+  renderDayDetail();
+  renderSummary();
+}
+
+function updateSingleDay(k){
+  renderDayStrip();
+  renderDayDetail();
+  renderSummary();
+}
+
+// Event delegation: listeners fijos en el strip de días y en el panel de
+// detalle, en vez de recrearlos en cada render (más rápido y ligero).
+const dayStripContainer = document.getElementById('dayStripContainer');
+const dayDetailContainer = document.getElementById('dayDetailContainer');
+
+dayStripContainer.addEventListener('click', (e)=>{
+  const chip = e.target.closest('.day-chip');
+  if(chip){
+    selectedDayIndex = parseInt(chip.dataset.dayIndex, 10);
+    renderDayStrip();
+    renderDayDetail();
+  }
+});
+
+dayDetailContainer.addEventListener('click', async (e)=>{
+  if(isCurrentWeekLocked()) return;
+  const btn = e.target.closest('.turno-btn');
+  if(btn){
+    const date = btn.dataset.date, turno = btn.dataset.turno;
+    weekData[date].turnos[turno] = !weekData[date].turnos[turno];
+    await saveWeek();
+    updateSingleDay(date);
+  }
+});
+
+dayDetailContainer.addEventListener('change', async (e)=>{
+  if(isCurrentWeekLocked()) return;
+  const chk = e.target.closest('.extras input[type=checkbox]');
+  if(chk){
+    const date = chk.dataset.date, extra = chk.dataset.extra;
+    weekData[date][extra] = chk.checked;
+    await saveWeek();
+    updateSingleDay(date);
+    return;
+  }
+  const sel = e.target.closest('.destajo-select');
+  if(sel){
+    const date = sel.dataset.date;
+    weekData[date].operativa = sel.value;
+    if(sel.value === 'ninguna') weekData[date].toneladas = 0;
+    await saveWeek();
+    updateSingleDay(date);
+    return;
+  }
+  const ton = e.target.closest('.destajo-ton');
+  if(ton){
+    const date = ton.dataset.date;
+    weekData[date].toneladas = parseFloat(ton.value)||0;
+    await saveWeek();
+    updateSingleDay(date);
+  }
+});
+
+// Los <details> de "Operativas especiales" se abren/cierran solos (nativo);
+// solo registramos el estado para que se preserve al actualizar el día.
+dayDetailContainer.addEventListener('toggle', (e)=>{
+  const det = e.target;
+  if(det.matches && det.matches('.ops-toggle')){
+    const k = det.dataset.ops;
+    if(det.open) expandedOps.add(k); else expandedOps.delete(k);
+  }
+}, true);
+
+function renderSummary(){
+  renderMonthlyTracker();
+  renderLoanTracker();
+  renderMonthEarnings();
+  const dates = weekDates(currentMonday);
+  const aplicaRM = countWeekJornadas() >= 7;
+  const monToSatComplete = weekMonToSatComplete();
+  let JB=0, FER=0, DOMG=0, HE=0, ADI=0, ASIGF=0, RM=0, diasTrabajados=0;
+  let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0;
+
+  dates.forEach((d, i)=>{
+    const k = isoDate(d);
+    const domingoRecargo = (i===6) && monToSatComplete;
+    const r = computeDay(k, weekData[k], aplicaRM, domingoRecargo);
+    JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross; ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
+    diasTrabajados += r.diasTrabajados;
+    jornadasNormales += r.jornadasNormales;
+    jornadasHE += r.jornadasHE;
+    jornadasFeriado += r.jornadasFeriado;
+    jornadasDomingo += r.jornadasDomingo;
+  });
+  const totalJornadas = jornadasNormales + jornadasHE + jornadasFeriado + jornadasDomingo;
+
+  const base = JB+HE+FER+DOMG;
+  const dominical = 0.1667*CFG.basico*(jornadasNormales+jornadasFeriado+jornadasDomingo);
+  const gratificacion = 0.1667*base;
+  const bonifExtra = 0.09*gratificacion;
+  const cts = 0.0833*base;
+  const vacaciones = 0.0833*base;
+
+  const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
+  const totalBruto = jornalCompleto + RM;
+
+  // Base de cálculo AFP/ONP verificada con boletas reales: jornada básica
+  // (incl. feriado/domingo) + dominical + vacaciones — excluye
+  // gratificación, bonif. extra, CTS, refrigerio/movilidad y adicionales.
+  const baseAFP = JB+FER+DOMG+dominical+vacaciones;
+  const afp = baseAFP * (CFG.afpPct/100);
+  const afpLabels = {onp:'ONP (13%)', habitat:'AFP Habitat (11.37%)', integra:'AFP Integra (11.37%)', prima:'AFP Prima (11.37%)', profuturo:'AFP Profuturo (11.37%)', manual:'Pensión (personalizado)'};
+  document.getElementById('rAFPLabel').textContent = afpLabels[CFG.sistemaPension] || 'AFP/ONP';
+  let prestamo = 0;
+  if(CFG.aplicarPrestamo){
+    if(totalJornadas>=6) prestamo = CFG.p6;
+    else if(totalJornadas===5) prestamo = CFG.p5;
+    else if(totalJornadas===4) prestamo = CFG.p4;
+    else prestamo = 0;
+  }
+  let rentaCalculada, tasaMarginalInfo = null;
+  if(CFG.rentaAuto){
+    const semanaActualNum = getISOWeekNumber(currentMonday);
+    const acumuladoAuto = countYearEarningsBefore(currentMonday);
+    const ingresosAcumuladosTotal = acumuladoAuto + (CFG.ingresosAcumuladosAnio||0);
+    const r5ta = calcularRenta5taSemanal(jornalCompleto, ingresosAcumuladosTotal, semanaActualNum);
+    rentaCalculada = r5ta.semanal;
+    tasaMarginalInfo = r5ta.tasaMarginal;
+  } else {
+    rentaCalculada = CFG.renta;
+  }
+  const comedorSemana = getWeekComedor(currentMonday);
+  const cuotaSindicalSemana = esPrimeraSemanaDelMes(currentMonday) ? CFG.cuotaSindical : 0;
+  const otros = comedorSemana + cuotaSindicalSemana + rentaCalculada;
+  const neto = totalBruto - afp - prestamo - otros;
+  scheduleWeekSync(totalBruto, afp+prestamo+otros, neto, totalJornadas);
+  const totalDescuentos = afp + prestamo + otros;
+
+  document.getElementById('headerDescuentos').textContent = '-' + fmtMoney(totalDescuentos);
+  document.getElementById('headerNeto').textContent = fmtMoney(neto);
+  document.getElementById('rRentaLabel').textContent = CFG.rentaAuto
+    ? `Renta 5ta (automático, tasa marginal ${Math.round(tasaMarginalInfo*100)}%)`
+    : 'Renta 5ta (manual)';
+
+  document.getElementById('rJornadasNormales').textContent = jornadasNormales;
+  document.getElementById('rJornadasHE').textContent = jornadasHE;
+  document.getElementById('rJornadasFeriado').textContent = jornadasFeriado;
+  document.getElementById('rJornadasDomingo').textContent = jornadasDomingo;
+  document.getElementById('rTotalJornadas').textContent = totalJornadas;
+  const quickParts = [totalJornadas + (totalJornadas===1?' jornada':' jornadas')];
+  if(jornadasHE>0) quickParts.push(jornadasHE + ' en HE');
+  if(jornadasFeriado>0) quickParts.push(jornadasFeriado + ' en feriado');
+  if(jornadasDomingo>0) quickParts.push(jornadasDomingo + ' en domingo x2');
+  document.getElementById('jornadasQuickView').textContent = quickParts.join(' · ');
+  document.getElementById('totalBruto').textContent = fmtMoney(jornalCompleto);
+  document.getElementById('rJB').textContent = fmtMoney(JB);
+  document.getElementById('rFER').textContent = fmtMoney(FER);
+  document.getElementById('rDOMG').textContent = fmtMoney(DOMG);
+  document.getElementById('rHE').textContent = fmtMoney(HE);
+  document.getElementById('rADI').textContent = fmtMoney(ADI);
+  document.getElementById('rASIGF').textContent = fmtMoney(ASIGF);
+  document.getElementById('rDOM').textContent = fmtMoney(dominical);
+  document.getElementById('rGRA').textContent = fmtMoney(gratificacion+bonifExtra);
+  document.getElementById('rCTS').textContent = fmtMoney(cts);
+  document.getElementById('rVAC').textContent = fmtMoney(vacaciones);
+  document.getElementById('rJORNALCOMPLETO').textContent = fmtMoney(jornalCompleto);
+  document.getElementById('rRM').textContent = fmtMoney(RM);
+  document.getElementById('rmNote').textContent = 'S/6 refrigerio + S/6 movilidad por cada jornada';
+  document.getElementById('rTOTAL').textContent = fmtMoney(totalBruto);
+  document.getElementById('rAFP').textContent = '-' + fmtMoney(afp);
+  document.getElementById('rPREST').textContent = '-' + fmtMoney(prestamo);
+  const comedorInput = document.getElementById('comedorSemanaInput');
+  if(document.activeElement !== comedorInput) comedorInput.value = comedorSemana || '';
+  document.getElementById('rCuotaSindical').textContent = '-' + fmtMoney(cuotaSindicalSemana);
+  document.getElementById('cuotaSindicalNote').textContent = cuotaSindicalSemana>0
+    ? 'Primera semana del mes: se descuenta'
+    : 'Solo se descuenta la primera semana del mes';
+  document.getElementById('rRentaVal').textContent = '-' + fmtMoney(rentaCalculada);
+  document.getElementById('rNETO').textContent = fmtMoney(neto);
+}
+
+document.getElementById('brandName').addEventListener('change', (e)=>{
+  lsSet('turnos-brand-name', e.target.value);
+});
+(function initBrand(){
+  const saved = lsGet('turnos-brand-name');
+  if(saved) document.getElementById('brandName').value = saved;
+})();
+
+document.getElementById('prevWeek').addEventListener('click', async ()=>{
+  currentMonday.setDate(currentMonday.getDate()-7);
+  renderWeekHeader();
+  await loadWeek();
+  renderDays();
+});
+document.getElementById('nextWeek').addEventListener('click', async ()=>{
+  currentMonday.setDate(currentMonday.getDate()+7);
+  renderWeekHeader();
+  await loadWeek();
+  renderDays();
+});
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+document.getElementById('monthBadgeBtn').addEventListener('click', ()=>openModal('monthModal'));
+document.getElementById('loanBadgeBtn').addEventListener('click', ()=>openModal('loanModal'));
+document.getElementById('earningsBadgeBtn').addEventListener('click', ()=>openModal('earningsModal'));
+
+document.getElementById('boletaFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(file) handleBoletaFile(file);
+});
+
+document.getElementById('manualCompareBtn').addEventListener('click', ()=>{
+  const ingresos = parseFloat(document.getElementById('manualIngresos').value);
+  const descuentos = parseFloat(document.getElementById('manualDescuentos').value);
+  const neto = parseFloat(document.getElementById('manualNeto').value);
+  const mondayStr = document.getElementById('manualWeekMonday').value;
+  const statusEl = document.getElementById('compareStatus');
+  if(!mondayStr){
+    statusEl.textContent = '⚠ Selecciona el lunes de la semana que quieres comparar.';
+    return;
+  }
+  const monday = getMonday(new Date(mondayStr + 'T00:00:00'));
+  statusEl.textContent = `✓ Comparando semana del ${monday.toLocaleDateString('es-PE')}`;
+  renderCompareResult({
+    totalIngresos: isNaN(ingresos) ? null : ingresos,
+    totalDescuentos: isNaN(descuentos) ? null : descuentos,
+    neto: isNaN(neto) ? null : neto
+  }, monday);
+});
+
+document.getElementById('comedorSemanaInput').addEventListener('change', async (e)=>{
+  if(isCurrentWeekLocked()){ e.target.value = getWeekComedor(currentMonday) || ''; return; }
+  setCurrentWeekComedor(parseFloat(e.target.value)||0);
+  await saveWeek();
+  renderSummary();
+});
+
+document.getElementById('lockWeekBtn').addEventListener('click', async ()=>{
+  if(isCurrentWeekLocked()){
+    const confirmar = confirm('¿Reabrir esta semana? Podrás volver a modificar los turnos, operativas y el comedor.');
+    if(!confirmar) return;
+    weekData._locked = false;
+  } else {
+    const confirmar = confirm('¿Cerrar esta semana? Ya no podrás modificar los turnos, operativas ni el comedor de esta semana hasta que la reabras.');
+    if(!confirmar) return;
+    weekData._locked = true;
+  }
+  await saveWeek();
+  renderDays();
+});
+
+function renderAdminMenuOption(){
+  const btn = document.getElementById('adminMenuBtn');
+  btn.style.display = (currentUserProfile && currentUserProfile.esAdmin) ? 'block' : 'none';
+}
+
+async function loadAdminView(){
+  const statusEl = document.getElementById('adminStatus');
+  const listEl = document.getElementById('adminList');
+  statusEl.textContent = 'Cargando trabajadores...';
+  listEl.innerHTML = '';
+  try{
+    const usuariosSnap = await db.collection('usuarios').get();
+    if(usuariosSnap.empty){
+      statusEl.textContent = 'No hay trabajadores registrados aún.';
+      return;
+    }
+    statusEl.textContent = `${usuariosSnap.size} trabajador(es) registrado(s).`;
+    const rows = [];
+    for(const doc of usuariosSnap.docs){
+      const u = doc.data();
+      let ultimo = null;
+      try{
+        const resumenesSnap = await db.collection('usuarios').doc(u.dni)
+          .collection('resumenes').orderBy('semana','desc').limit(1).get();
+        if(!resumenesSnap.empty) ultimo = resumenesSnap.docs[0].data();
+      }catch(e){ /* sin resúmenes aún */ }
+      rows.push({u, ultimo});
+    }
+    listEl.innerHTML = rows.map(({u, ultimo})=>{
+      const especialidadLabel = SPECIALTY_LABELS[u.especialidad] || u.especialidad;
+      const detalle = ultimo
+        ? `<div class="admin-row-detail"><span>Sem. ${ultimo.semana.replace('semana-','')}</span><span>Neto: ${fmtMoney(ultimo.neto)}</span></div>`
+        : `<div class="admin-row-detail"><span style="color:var(--muted);">Sin datos guardados aún</span></div>`;
+      return `<div class="admin-row">
+        <div class="admin-row-top">
+          <span class="admin-row-name">${u.nombre}${u.esAdmin?' 👑':''}</span>
+          <span class="admin-row-dni">DNI ${u.dni}</span>
+        </div>
+        <div class="admin-row-detail"><span>${especialidadLabel}</span></div>
+        ${detalle}
+      </div>`;
+    }).join('');
+  }catch(err){
+    statusEl.textContent = '⚠ No se pudo cargar la lista (revisa las reglas de Firestore): ' + err.message;
+  }
+}
+
+document.getElementById('adminMenuBtn').addEventListener('click', loadAdminView);
+
+document.getElementById('logoutMenuBtn').addEventListener('click', async ()=>{
+  const confirmar = confirm('¿Cerrar sesión?');
+  if(!confirmar) return;
+  await auth.signOut();
+  location.reload();
+});
+
+document.getElementById('cornerMenuBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  document.getElementById('cornerMenu').classList.toggle('open');
+});
+document.querySelectorAll('.corner-menu button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.open) openModal(btn.dataset.open);
+    document.getElementById('cornerMenu').classList.remove('open');
+  });
+});
+document.addEventListener('click', (e)=>{
+  const wrap = document.getElementById('cornerMenu');
+  if(wrap.classList.contains('open') && !e.target.closest('.corner-menu-wrap')){
+    wrap.classList.remove('open');
+  }
+});
+
+document.querySelectorAll('.modal-close').forEach(btn=>{
+  btn.addEventListener('click', ()=>closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal-overlay').forEach(overlay=>{
+  overlay.addEventListener('click', (e)=>{
+    if(e.target === overlay) closeModal(overlay.id);
+  });
+});
+
+document.getElementById('cfgSistemaPension').addEventListener('change', async (e)=>{
+  CFG.sistemaPension = e.target.value;
+  if(CFG.sistemaPension !== 'manual'){
+    CFG.afpPct = TASAS_PENSION[CFG.sistemaPension];
+  }
+  applyConfigToInputs();
+  await saveConfig();
+  renderDays();
+});
+
+document.getElementById('cfgEspecialidad').addEventListener('change', async (e)=>{
+  CFG.especialidad = e.target.value;
+  CFG.basico = SPECIALTY_RATES[CFG.especialidad];
+  applyConfigToInputs();
+  await saveConfig();
+  renderDays();
+});
+
+['cfgBasico','cfgRefri','cfgMovil','cfgAfp','cfgP6','cfgP5','cfgP4','cfgCuotaSindical','cfgRenta','cfgIngresosAcumulados','cfgPrestamoTotal'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', async ()=>{
+    readConfigFromInputs();
+    await saveConfig();
+    renderDays();
+  });
+});
+document.getElementById('cfgAplicarPrestamo').addEventListener('change', async ()=>{
+  readConfigFromInputs();
+  await saveConfig();
+  renderDays();
+});
+
+document.getElementById('cfgAsignacionFamiliar').addEventListener('change', async ()=>{
+  readConfigFromInputs();
+  await saveConfig();
+  renderDays();
+});
+
+document.getElementById('cfgRentaAuto').addEventListener('change', async ()=>{
+  readConfigFromInputs();
+  document.getElementById('cfgRentaManualField').style.display = CFG.rentaAuto ? 'none' : 'flex';
+  await saveConfig();
+  renderDays();
+});
+
+async function initApp(){
+  await loadConfig();
+  renderWeekHeader();
+  await loadWeek();
+  const todayISO = isoDate(new Date());
+  const dates = weekDates(currentMonday);
+  const todayIndex = dates.findIndex(d=>isoDate(d)===todayISO);
+  if(todayIndex >= 0) selectedDayIndex = todayIndex;
+  renderDays();
+}
+
+// --- Autenticación con DNI (Firebase Auth + Firestore) ---
+let currentUserProfile = null; // {dni, nombre, especialidad, esAdmin}
+
+function dniToEmail(dni){ return dni + '@turnos-pdp.app'; }
+
+function showAuthError(msg){
+  document.getElementById('authError').textContent = msg || '';
+}
+function setAuthLoading(on){
+  document.getElementById('authLoading').style.display = on ? 'block' : 'none';
+}
+
+document.getElementById('tabLogin').addEventListener('click', ()=>{
+  document.getElementById('tabLogin').classList.add('active');
+  document.getElementById('tabRegister').classList.remove('active');
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('registerForm').style.display = 'none';
+  showAuthError('');
+});
+document.getElementById('tabRegister').addEventListener('click', ()=>{
+  document.getElementById('tabRegister').classList.add('active');
+  document.getElementById('tabLogin').classList.remove('active');
+  document.getElementById('registerForm').style.display = 'block';
+  document.getElementById('loginForm').style.display = 'none';
+  showAuthError('');
+});
+
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  const dni = document.getElementById('loginDni').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!/^\d{8}$/.test(dni)){ showAuthError('El DNI debe tener 8 dígitos.'); return; }
+  if(!password){ showAuthError('Ingresa tu contraseña.'); return; }
+  showAuthError(''); setAuthLoading(true);
+  try{
+    await auth.signInWithEmailAndPassword(dniToEmail(dni), password);
+  }catch(err){
+    setAuthLoading(false);
+    if(err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found'){
+      showAuthError('DNI o contraseña incorrectos.');
+    } else {
+      showAuthError('No se pudo iniciar sesión: ' + err.message);
+    }
+  }
+});
+
+document.getElementById('registerBtn').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('regNombre').value.trim();
+  const dni = document.getElementById('regDni').value.trim();
+  const especialidad = document.getElementById('regEspecialidad').value;
+  const password = document.getElementById('regPassword').value;
+  const password2 = document.getElementById('regPassword2').value;
+
+  if(!nombre){ showAuthError('Escribe tu nombre completo.'); return; }
+  if(!/^\d{8}$/.test(dni)){ showAuthError('El DNI debe tener 8 dígitos.'); return; }
+  if(password.length < 6){ showAuthError('La contraseña debe tener al menos 6 caracteres.'); return; }
+  if(password !== password2){ showAuthError('Las contraseñas no coinciden.'); return; }
+
+  showAuthError(''); setAuthLoading(true);
+  try{
+    const cred = await auth.createUserWithEmailAndPassword(dniToEmail(dni), password);
+    await db.collection('usuarios').doc(dni).set({
+      dni, nombre, especialidad, esAdmin:false,
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(err){
+    setAuthLoading(false);
+    if(err.code === 'auth/email-already-in-use'){
+      showAuthError('Ese DNI ya está registrado. Ve a "Iniciar sesión".');
+    } else {
+      showAuthError('No se pudo registrar: ' + err.message);
+    }
+  }
+});
+
+auth.onAuthStateChanged(async (user)=>{
+  if(user){
+    const dni = user.email.split('@')[0];
+    try{
+      const doc = await db.collection('usuarios').doc(dni).get();
+      if(doc.exists){
+        currentUserProfile = doc.data();
+        CFG.especialidad = currentUserProfile.especialidad || CFG.especialidad;
+        CFG.basico = SPECIALTY_RATES[CFG.especialidad] || CFG.basico;
+        document.getElementById('authScreen').style.display = 'none';
+        await initApp();
+        applyConfigToInputs();
+        renderAdminMenuOption();
+      } else {
+        showAuthError('No se encontró tu perfil. Intenta registrarte de nuevo.');
+        setAuthLoading(false);
+        await auth.signOut();
+      }
+    }catch(err){
+      showAuthError('Error al cargar tu perfil: ' + err.message);
+      setAuthLoading(false);
+    }
+  } else {
+    currentUserProfile = null;
+    document.getElementById('authScreen').style.display = 'flex';
+    setAuthLoading(false);
+  }
+});
+</script>
+</body>
+</html>
