@@ -923,7 +923,18 @@ function isoDate(d){
 function fmtMoney(n){
   return 'S/' + (Math.round(n*100)/100).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
-function weekKey(monday){ return 'semana-' + isoDate(monday); }
+// Antepone el DNI del usuario logueado a cualquier llave de localStorage,
+// para que los datos de cada cuenta queden completamente separados aunque
+// varias personas usen el mismo celular/navegador.
+function userStorageKey(key){
+  const dni = (currentUserProfile && currentUserProfile.dni) || 'sin-sesion';
+  return dni + '_' + key;
+}
+
+function weekKey(monday){ return userStorageKey('semana-' + isoDate(monday)); }
+// Identificador de semana SIN el prefijo del DNI — para usar en Firestore,
+// donde los datos ya quedan separados por usuario en su propia carpeta.
+function weekIdClean(monday){ return 'semana-' + isoDate(monday); }
 
 function lsGet(key){
   try{
@@ -945,7 +956,7 @@ function lsSet(key, value){
 }
 
 async function loadConfig(){
-  const saved = lsGet('turnos-config-general');
+  const saved = lsGet(userStorageKey('turnos-config-general'));
   if(saved){
     if(saved.sistemaPension === undefined){
       // Configuración de una versión anterior a la del selector de AFP/ONP:
@@ -960,7 +971,7 @@ async function loadConfig(){
   applyConfigToInputs();
 }
 async function saveConfig(){
-  lsSet('turnos-config-general', CFG);
+  lsSet(userStorageKey('turnos-config-general'), CFG);
 }
 function applyConfigToInputs(){
   document.getElementById('cfgEspecialidad').value = CFG.especialidad;
@@ -1224,9 +1235,10 @@ function renderMonthlyTracker(){
 // préstamo según la escala vigente — para ver el acumulado real pagado.
 function getAllWeekKeys(){
   const keys = [];
+  const prefix = userStorageKey('semana-');
   for(let i=0; i<localStorage.length; i++){
     const key = localStorage.key(i);
-    if(key && key.startsWith('semana-')) keys.push(key);
+    if(key && key.startsWith(prefix)) keys.push(key);
   }
   return keys.sort();
 }
@@ -1238,7 +1250,7 @@ function countLoanAccumulated(){
 
   weekKeys.forEach(wk=>{
     const data = lsGet(wk) || {};
-    const mondayISO = wk.replace('semana-', '');
+    const mondayISO = wk.replace(userStorageKey('semana-'), '');
     let totalJornadasSemana = 0;
     Object.keys(data).forEach(dayKey=>{
       const dd = data[dayKey];
@@ -1396,9 +1408,9 @@ function scheduleWeekSync(bruto, descuentos, neto, jornadas){
   syncTimeout = setTimeout(async ()=>{
     try{
       await db.collection('usuarios').doc(currentUserProfile.dni)
-        .collection('resumenes').doc(weekKey(currentMonday))
+        .collection('resumenes').doc(weekIdClean(currentMonday))
         .set({
-          semana: weekKey(currentMonday),
+          semana: weekIdClean(currentMonday),
           bruto, descuentos, neto, jornadas,
           actualizado: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -1423,7 +1435,7 @@ function renderMonthEarnings(){
     listEl.innerHTML = '<div class="month-day-row" style="color:var(--muted);">Aún no hay ingresos registrados este mes.</div>';
   } else {
     listEl.innerHTML = weekKeysSorted.map(wk=>{
-      const mondayISO = wk.replace('semana-','');
+      const mondayISO = wk.replace(userStorageKey('semana-'), '');
       const d = new Date(mondayISO+'T00:00:00');
       const label = d.toLocaleDateString('es-PE', {day:'numeric', month:'short'});
       return `<div class="month-day-row"><span>Semana del ${label}</span><span>${fmtMoney(porSemana[wk])}</span></div>`;
