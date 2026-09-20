@@ -463,8 +463,8 @@
     </div>
 
     <div id="registerForm" style="display:none;">
-      <div class="field"><label>Apellidos</label><input type="text" id="regApellidos" placeholder="Gonzales Flores" autocomplete="off" autocapitalize="words"></div>
-      <div class="field"><label>Nombres</label><input type="text" id="regNombres" placeholder="Javier" autocomplete="off" autocapitalize="words"></div>
+      <div class="field"><label>Apellidos</label><input type="text" id="regApellidos" autocomplete="off" autocapitalize="words"></div>
+      <div class="field"><label>Nombres</label><input type="text" id="regNombres" autocomplete="off" autocapitalize="words"></div>
       <div class="field"><label>DNI</label><input type="text" id="regDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos" autocomplete="off"></div>
       <div class="field">
         <label>Especialidad</label>
@@ -1439,21 +1439,42 @@ function countYearEarningsBefore(monday){
 // que RRHH/admin pueda verlo centralizado. Con debounce para no escribir en
 // cada toque, solo cuando la persona deja de interactuar un momento.
 let syncTimeout = null;
+let lastSyncPayload = null;
+async function doWeekSync(){
+  if(!currentUserProfile || !lastSyncPayload) return;
+  const {monday, bruto, descuentos, neto, jornadas} = lastSyncPayload;
+  try{
+    await db.collection('usuarios').doc(currentUserProfile.dni)
+      .collection('resumenes').doc(weekIdClean(monday))
+      .set({
+        semana: weekIdClean(monday),
+        bruto, descuentos, neto, jornadas,
+        actualizado: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    lastSyncPayload = null;
+  }catch(err){ console.error('No se pudo sincronizar con la nube', err); }
+}
 function scheduleWeekSync(bruto, descuentos, neto, jornadas){
   if(!currentUserProfile) return;
+  lastSyncPayload = {monday: currentMonday, bruto, descuentos, neto, jornadas};
   clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(async ()=>{
-    try{
-      await db.collection('usuarios').doc(currentUserProfile.dni)
-        .collection('resumenes').doc(weekIdClean(currentMonday))
-        .set({
-          semana: weekIdClean(currentMonday),
-          bruto, descuentos, neto, jornadas,
-          actualizado: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    }catch(err){ console.error('No se pudo sincronizar con la nube', err); }
-  }, 1500);
+  syncTimeout = setTimeout(doWeekSync, 1500);
 }
+// Guardado de emergencia: si la persona cierra la pestaña, cambia de app o
+// bloquea el celular antes de que pasen los 1.5s, se intenta guardar de
+// inmediato para no perder ese último cambio.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden' && lastSyncPayload){
+    clearTimeout(syncTimeout);
+    doWeekSync();
+  }
+});
+window.addEventListener('pagehide', ()=>{
+  if(lastSyncPayload){
+    clearTimeout(syncTimeout);
+    doWeekSync();
+  }
+});
 
 function renderMonthEarnings(){
   const monday = currentMonday;
