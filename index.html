@@ -65,10 +65,10 @@
   .title-row{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   .corner-menu-wrap{position:relative; flex-shrink:0;}
   .corner-menu-btn{
-    background:var(--surface); border:1px solid var(--line); color:var(--muted);
-    width:36px; height:36px; border-radius:9px; font-size:1.1rem; cursor:pointer;
+    background:none; border:none; color:var(--muted);
+    width:36px; height:36px; border-radius:9px; font-size:1.2rem; cursor:pointer;
   }
-  .corner-menu-btn:active{border-color:var(--accent2); color:var(--text);}
+  .corner-menu-btn:active{background:var(--surface-2); color:var(--text);}
   .corner-menu{
     display:none; position:absolute; top:42px; right:0; z-index:20;
     background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
@@ -89,10 +89,10 @@
     padding:10px 8px;
   }
   .wn-arrow{
-    background:var(--surface-2); border:1px solid var(--line); color:var(--text);
-    font-size:1.2rem; width:38px; height:38px; border-radius:9px; cursor:pointer; flex-shrink:0;
+    background:none; border:none; color:var(--muted);
+    font-size:1.3rem; width:38px; height:38px; border-radius:9px; cursor:pointer; flex-shrink:0;
   }
-  .wn-arrow:active{border-color:var(--accent2);}
+  .wn-arrow:active{background:var(--surface-2); color:var(--text);}
   .wn-center{flex:1; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px;}
   .wn-badge{
     font-family:'Oswald',sans-serif; font-size:0.68rem; letter-spacing:1px; text-transform:uppercase;
@@ -101,7 +101,7 @@
   .wn-range{font-family:'Oswald',sans-serif; font-size:0.98rem; color:var(--text);}
 
   .wn-lock{font-size:1rem;}
-  .wn-lock.locked{border-color:var(--good); color:var(--good); background:var(--good-dim);}
+  .wn-lock.locked{color:var(--good); background:var(--good-dim);}
   .day-detail-card.locked{opacity:0.55;}
   .day-detail-card.locked .turno-btn,
   .day-detail-card.locked input,
@@ -130,7 +130,7 @@
 
   .mini-tracker{
     background:var(--surface); border:1px solid var(--line); border-radius:10px;
-    padding:8px 12px; margin-bottom:8px; box-shadow:0 1px 6px rgba(0,0,0,0.18);
+    padding:8px 12px; margin-bottom:8px;
   }
   .badge-stack{display:flex; flex-direction:column; gap:4px; align-items:flex-end;}
   .mini-badge{
@@ -138,7 +138,7 @@
     padding:4px 9px; cursor:pointer; display:flex; align-items:center; gap:6px;
     white-space:nowrap;
   }
-  .mini-badge .mb-label{font-size:0.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px;}
+  .mini-badge .mb-label{font-size:0.64rem; color:var(--muted);}
   .mini-badge .mb-val{font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text); font-weight:600;}
   .mini-badge.warn{border-color:var(--pegada);}
   .mini-badge.warn .mb-val{color:var(--pegada);}
@@ -179,7 +179,7 @@
     background:var(--surface); cursor:pointer; position:relative;
     transition:border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
   }
-  .day-chip .dc-label{font-size:0.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;}
+  .day-chip .dc-label{font-size:0.68rem; color:var(--muted);}
   .day-chip .dc-date{font-family:'Oswald',sans-serif; font-size:1.15rem; font-weight:600; color:var(--text); line-height:1.1;}
   .day-chip .dc-amount{font-family:'IBM Plex Mono',monospace; font-size:0.6rem; color:var(--muted);}
   .day-chip .dc-dot{
@@ -192,14 +192,13 @@
   .day-chip.has-feriado{border-color:var(--feriado);}
   .day-chip.has-feriado .dc-dot{background:var(--feriado);}
   .day-chip.selected{
-    background:var(--accent-dim); transform:translateY(-2px);
-    box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    background:var(--accent-dim); border-color:var(--accent);
   }
   .day-chip.selected .dc-label{color:var(--accent);}
 
   .day-detail-card{
     background:var(--surface); border:1px solid var(--line); border-radius:14px;
-    padding:16px; margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,0.22);
+    padding:16px; margin-bottom:14px;
   }
   .day-detail-card.is-feriado{border-color:var(--feriado);}
   .day-detail-head{
@@ -247,7 +246,6 @@
     border-radius:12px;
     margin-bottom:12px;
     overflow:hidden;
-    box-shadow:0 2px 10px rgba(0,0,0,0.22);
   }
   .day-card.is-feriado{ border-color:var(--feriado); }
   .day-head{
@@ -380,8 +378,7 @@
   .sd-row.total-row{color:var(--text); font-weight:600; border-bottom:none;}
   .sd-row.neto-row{color:var(--good); font-weight:700;}
   .sd-section-label{
-    font-size:0.66rem; color:var(--accent2); text-transform:uppercase;
-    letter-spacing:1.2px; font-weight:600; margin:14px 0 4px;
+    font-size:0.72rem; color:var(--accent2); font-weight:600; margin:16px 0 6px;
   }
 
   .info-box{
