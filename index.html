@@ -8,23 +8,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0B1720;
-    --surface:#132433;
-    --surface-2:#1A2F40;
-    --surface-3:#24405480;
-    --line:#25404F;
-    --text:#E9F1F5;
-    --muted:#7E97A3;
-    --accent:#C99A4D;
-    --accent-dim:#C99A4D26;
-    --accent2:#4E9088;
-    --accent2-dim:#4E908826;
-    --feriado:#C15050;
-    --feriado-dim:#C1505022;
-    --pegada:#C9A23E;
-    --pegada-dim:#C9A23E22;
-    --good:#4E9F7E;
-    --good-dim:#4E9F7E26;
+    --bg:#0B1220;
+    --surface:#131F30;
+    --surface-2:#1C2E45;
+    --surface-3:#2A415C80;
+    --line:#2A3F58;
+    --text:#F3F7FA;
+    --muted:#8CA5BC;
+    --accent:#F5A623;
+    --accent-dim:#F5A62326;
+    --accent2:#20C4B8;
+    --accent2-dim:#20C4B826;
+    --feriado:#F14E60;
+    --feriado-dim:#F14E6022;
+    --pegada:#F2C230;
+    --pegada-dim:#F2C23022;
+    --good:#2ED490;
+    --good-dim:#2ED49026;
   }
   *{box-sizing:border-box;}
   body{
@@ -1161,6 +1161,40 @@ function getPrevDayTardeMarked(monday, weekDataObj, dayIndex){
   return !!(dd && dd.turnos && dd.turnos.tarde);
 }
 
+// Calcula el rol FINAL de cada turno marcado en la semana, combinando:
+// 1) la pegada (2 turnos seguidos el mismo día, o Tarde->Amanecida cruzando
+//    medianoche) — ya clasifica el 2do turno como HE.
+// 2) el umbral semanal: de la 7ma jornada "normal" (no-pegada) en adelante,
+//    en orden cronológico dentro de la semana, también se paga como HE,
+//    aunque no sea una pegada (confirmado por el usuario con boleta real).
+// Devuelve {[fechaISO]: {roles, esPegada, crossDayPegada, warning}}.
+function computeWeekRoles(monday, weekDataObj){
+  const dates = weekDates(monday);
+  const perDay = dates.map((d,i)=>{
+    const k = isoDate(d);
+    const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
+    const prevTardeMarked = getPrevDayTardeMarked(monday, weekDataObj, i);
+    const r = getTurnoRoles(dayData, prevTardeMarked);
+    return {k, roles: {...r.roles}, esPegada: r.esPegada, crossDayPegada: r.crossDayPegada, warning: r.warning};
+  });
+
+  let contadorNormales = 0;
+  perDay.forEach(day=>{
+    TURNOS.forEach(t=>{
+      const rol = day.roles[t.key];
+      if(rol === null || rol === undefined) return; // turno no marcado
+      if(rol === 'he') return; // ya es HE por pegada, no cuenta para el umbral
+      contadorNormales++;
+      if(contadorNormales > 6) day.roles[t.key] = 'he';
+    });
+  });
+
+  const result = {};
+  perDay.forEach(day=>{ result[day.k] = {roles: day.roles, esPegada: day.esPegada, crossDayPegada: day.crossDayPegada, warning: day.warning}; });
+  return result;
+}
+
+
 function countWeekJornadas(){
   let total = 0;
   weekDates(currentMonday).forEach((d,i)=>{
@@ -1376,13 +1410,13 @@ function computeWeekDayAmounts(monday, weekDataObj){
   const monToSatComplete = computeMonToSatCompleteFor(weekDataObj, dates);
   const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates, monday);
   const aplicaRM = totalJornadasWeek >= 7;
+  const weekRoles = computeWeekRoles(monday, weekDataObj);
   const map = {};
   dates.forEach((d,i)=>{
     const k = isoDate(d);
     const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
     const domingoRecargo = (i===6) && monToSatComplete;
-    const prevTardeMarked = getPrevDayTardeMarked(monday, weekDataObj, i);
-    const result = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
+    const result = computeDay(k, dayData, aplicaRM, domingoRecargo, weekRoles[k]);
     map[k] = result.subtotalDia;
   });
   return map;
@@ -1507,6 +1541,7 @@ function computeWeekSummary(monday, weekDataObj){
   const monToSatComplete = computeMonToSatCompleteFor(weekDataObj, dates);
   const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates, monday);
   const aplicaRM = totalJornadasWeek >= 7;
+  const weekRoles = computeWeekRoles(monday, weekDataObj);
   let JB=0,FER=0,DOMG=0,HE=0,ADI=0,ASIGF=0,RM=0;
   let jornadasNormales=0,jornadasHE=0,jornadasFeriado=0,jornadasDomingo=0;
 
@@ -1514,8 +1549,7 @@ function computeWeekSummary(monday, weekDataObj){
     const k = isoDate(d);
     const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
     const domingoRecargo = (i===6) && monToSatComplete;
-    const prevTardeMarked = getPrevDayTardeMarked(monday, weekDataObj, i);
-    const r = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
+    const r = computeDay(k, dayData, aplicaRM, domingoRecargo, weekRoles[k]);
     JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross;
     ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
     jornadasNormales+=r.jornadasNormales; jornadasHE+=r.jornadasHE;
@@ -1639,7 +1673,7 @@ async function handleBoletaFile(file){
   }
 }
 
-function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, prevTardeMarked){
+function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, weekRolesForDay){
   const feriadoInfo = FERIADOS_2026[dateISO];
   const isFeriado = !!feriadoInfo;
   // Confirmado por el usuario: en PDP se paga como feriado con 100% de recargo
@@ -1650,7 +1684,7 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, prevTardeMarked)
   // se paga con 100% de recargo adicional (igual que un feriado). No se
   // duplica si el domingo además coincide con un feriado del calendario.
   const aplicarRecargoDomingo = domingoRecargo && !isFeriado;
-  const {roles, esPegada, crossDayPegada, warning} = getTurnoRoles(dayData, prevTardeMarked);
+  const {roles, esPegada, crossDayPegada, warning} = weekRolesForDay;
 
   let jornadaBasica=0, feriadoGross=0, domingoGross=0, heGross=0, refriMov=0, adicionales=0, asignacionFamiliar=0;
   let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0;
@@ -1728,8 +1762,8 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, prevTardeMarked)
 function buildDayChipHTML(k, i, d, aplicaRM){
   const dayData = weekData[k];
   const domingoRecargo = (i===6) && weekMonToSatComplete();
-  const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
-  const result = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
+  const weekRoles = computeWeekRoles(currentMonday, weekData);
+  const result = computeDay(k, dayData, aplicaRM, domingoRecargo, weekRoles[k]);
   const dayLabel3 = DIAS[i].slice(0,3);
   const dateNum = d.getDate();
 
@@ -1753,8 +1787,8 @@ function buildDayDetailHTML(k, i, d, aplicaRM){
   const dayData = weekData[k];
   const locked = isCurrentWeekLocked();
   const domingoRecargo = (i===6) && weekMonToSatComplete();
-  const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
-  const result = computeDay(k, dayData, aplicaRM, domingoRecargo, prevTardeMarked);
+  const weekRoles = computeWeekRoles(currentMonday, weekData);
+  const result = computeDay(k, dayData, aplicaRM, domingoRecargo, weekRoles[k]);
   const dateLabel = d.toLocaleDateString('es-PE',{weekday:'long', day:'numeric', month:'long'});
 
   let tagsHtml = '';
@@ -1953,11 +1987,11 @@ function renderSummary(){
   let JB=0, FER=0, DOMG=0, HE=0, ADI=0, ASIGF=0, RM=0, diasTrabajados=0;
   let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0;
 
+  const weekRoles = computeWeekRoles(currentMonday, weekData);
   dates.forEach((d, i)=>{
     const k = isoDate(d);
     const domingoRecargo = (i===6) && monToSatComplete;
-    const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
-    const r = computeDay(k, weekData[k], aplicaRM, domingoRecargo, prevTardeMarked);
+    const r = computeDay(k, weekData[k], aplicaRM, domingoRecargo, weekRoles[k]);
     JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross; ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
     diasTrabajados += r.diasTrabajados;
     jornadasNormales += r.jornadasNormales;
