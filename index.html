@@ -1566,10 +1566,11 @@ function computeWeekSummary(monday, weekDataObj){
   const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
   const totalBruto = jornalCompleto+RM;
 
-  // Base de cálculo AFP/ONP verificada con boletas reales: jornada básica
-  // (incl. feriado/domingo) + dominical + vacaciones — excluye
-  // gratificación, bonif. extra, CTS, refrigerio/movilidad y adicionales.
-  const baseAFP = JB+FER+DOMG+dominical+vacaciones;
+  // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37 y 38):
+  // jornada básica (incl. feriado/domingo) + horas extra + dominical +
+  // vacaciones — excluye gratificación, bonif. extra, CTS,
+  // refrigerio/movilidad y adicionales.
+  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones;
   const afp = baseAFP*(CFG.afpPct/100);
   let prestamo = 0;
   if(CFG.aplicarPrestamo){
@@ -2011,10 +2012,11 @@ function renderSummary(){
   const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
   const totalBruto = jornalCompleto + RM;
 
-  // Base de cálculo AFP/ONP verificada con boletas reales: jornada básica
-  // (incl. feriado/domingo) + dominical + vacaciones — excluye
-  // gratificación, bonif. extra, CTS, refrigerio/movilidad y adicionales.
-  const baseAFP = JB+FER+DOMG+dominical+vacaciones;
+  // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37 y 38):
+  // jornada básica (incl. feriado/domingo) + horas extra + dominical +
+  // vacaciones — excluye gratificación, bonif. extra, CTS,
+  // refrigerio/movilidad y adicionales.
+  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones;
   const afp = baseAFP * (CFG.afpPct/100);
   const afpLabels = {onp:'ONP (13%)', habitat:'AFP Habitat (11.37%)', integra:'AFP Integra (11.37%)', prima:'AFP Prima (11.37%)', profuturo:'AFP Profuturo (11.37%)', manual:'Pensión (personalizado)'};
   document.getElementById('rAFPLabel').textContent = afpLabels[CFG.sistemaPension] || 'AFP/ONP';
