@@ -1170,12 +1170,15 @@ function getPrevDayTardeMarked(monday, weekDataObj, dayIndex){
 // Devuelve {[fechaISO]: {roles, esPegada, crossDayPegada, warning}}.
 function computeWeekRoles(monday, weekDataObj){
   const dates = weekDates(monday);
+  const monToSatComplete = computeMonToSatCompleteFor(weekDataObj, dates);
   const perDay = dates.map((d,i)=>{
     const k = isoDate(d);
     const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
     const prevTardeMarked = getPrevDayTardeMarked(monday, weekDataObj, i);
     const r = getTurnoRoles(dayData, prevTardeMarked);
-    return {k, roles: {...r.roles}, esPegada: r.esPegada, crossDayPegada: r.crossDayPegada, warning: r.warning};
+    const isFeriado = !!FERIADOS_2026[k];
+    const domingoRecargo = (i===6) && monToSatComplete && !isFeriado;
+    return {k, roles: {...r.roles}, esPegada: r.esPegada, crossDayPegada: r.crossDayPegada, warning: r.warning, isFeriado, domingoRecargo};
   });
 
   let contadorNormales = 0;
@@ -1184,6 +1187,11 @@ function computeWeekRoles(monday, weekDataObj){
       const rol = day.roles[t.key];
       if(rol === null || rol === undefined) return; // turno no marcado
       if(rol === 'he') return; // ya es HE por pegada, no cuenta para el umbral
+      // Un turno en feriado o en descanso dominical trabajado SIEMPRE
+      // conserva su pago doble, sin importar el orden dentro de la
+      // semana — nunca se cuenta para el límite de 6 ni se convierte
+      // en HE por superarlo (confirmado con boleta real).
+      if(day.isFeriado || day.domingoRecargo) return;
       contadorNormales++;
       if(contadorNormales > 6) day.roles[t.key] = 'he';
     });
