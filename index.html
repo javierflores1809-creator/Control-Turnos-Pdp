@@ -569,7 +569,7 @@
       <div class="sd-row"><span id="rAFPLabel">AFP/ONP</span><span class="val money" id="rAFP">S/0.00</span></div>
       <div class="sd-row"><span>Préstamo (según escala)</span><span class="val money" id="rPREST">S/0.00</span></div>
       <div class="sd-row"><span>Comedor esta semana (consumos extra)</span><span class="val money"><input type="number" id="comedorSemanaInput" step="0.01" style="width:80px; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:3px 6px; font-family:inherit; text-align:right;"></span></div>
-      <div class="sd-row"><span>Cuota sindical<span id="cuotaSindicalNote" style="display:block; font-size:0.68rem; color:var(--muted);"></span></span><span class="val money" id="rCuotaSindical">S/0.00</span></div>
+      <div class="sd-row"><span>Cuota sindical<span id="cuotaSindicalNote" style="display:block; font-size:0.68rem; color:var(--muted);"></span><select id="cuotaSindicalOverride" style="display:block; margin-top:3px; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:2px 4px; font-family:inherit; font-size:0.68rem;"><option value="auto">Automático (por fecha)</option><option value="si">Sí, cobrar esta semana</option><option value="no">No cobrar esta semana</option></select></span><span class="val money" id="rCuotaSindical">S/0.00</span></div>
       <div class="sd-row"><span id="rRentaLabel">Renta 5ta</span><span class="val money" id="rRentaVal">S/0.00</span></div>
       <div class="sd-row neto-row"><span>Neto estimado</span><span class="val money" id="rNETO">S/0.00</span></div>
     </div>
@@ -868,14 +868,18 @@ const ASIG_FAMILIAR_POR_JORNADA = ASIG_FAMILIAR_MENSUAL / 26; // prorrateada ent
 const UIT_2026 = 5500;
 const DEDUCCION_ANUAL = UIT_2026 * 7; // 38,500 — no pagan renta por debajo de esto
 
-function calcularRenta5taSemanal(jornalCompletoSemana, ingresosAcumulados, semanaActualNum){
-  // Proyección acumulada: lo ya ganado en el año + lo que falta (estimado
-  // con el jornal de esta semana × semanas que quedan), en vez de asumir
-  // todo el año igual a esta semana. Se reparte el impuesto entre las
-  // semanas que quedan del año, de forma parecida a como SUNAT reparte la
-  // retención pendiente entre los meses restantes.
+function calcularRenta5taSemanal(jornalCompletoSemana, ingresosAcumulados, semanaActualNum, jornalBasicoNormalSemana){
+  // Proyección acumulada, imitando el método real de RRHH/SUNAT: lo ya
+  // ganado en el año (incluida esta semana, con lo real que sea) + lo que
+  // falta, estimado de forma CONSERVADORA con el jornal básico normal
+  // (sin horas extra) — no con el promedio, que se infla con semanas de
+  // HE. Así una semana puntual con horas extra no dispara la proyección
+  // de las semanas futuras, igual que RRHH asume un sueldo plano para
+  // los meses que aún no se han trabajado.
   const semanasRestantes = Math.max(1, 52 - semanaActualNum + 1);
-  const anualProyectado = (ingresosAcumulados||0) + (jornalCompletoSemana * semanasRestantes);
+  const acumuladoConEstaSemanaa = (ingresosAcumulados||0) + jornalCompletoSemana;
+  const proyeccionFutura = (jornalBasicoNormalSemana||jornalCompletoSemana) * (semanasRestantes-1);
+  const anualProyectado = acumuladoConEstaSemanaa + proyeccionFutura;
   const baseImponible = Math.max(0, anualProyectado - DEDUCCION_ANUAL);
   const tramos = [
     {hasta: 5*UIT_2026, tasa: 0.08},
@@ -1057,6 +1061,27 @@ function getWeekComedor(monday, weekDataObj){
 }
 function setCurrentWeekComedor(value){
   weekData._comedor = value;
+}
+
+// La cuota sindical NO sigue un patrón fijo de "primera semana del mes"
+// (verificado con boletas reales: se cobró en semana 37 -07-13/09- y en
+// semana 40 -28/09-04/10-, pero no en 38 ni 39, sin un patrón regular de
+// 4 semanas calendario). Por eso el cálculo automático por fecha es solo
+// una sugerencia, y el usuario puede anular manualmente cada semana con
+// "_cuotaOverride": true (cobrar), false (no cobrar), o sin la llave
+// (usar el cálculo automático por fecha).
+function getWeekCuotaSindical(monday, weekDataObj){
+  const obj = weekDataObj !== undefined ? weekDataObj : weekData;
+  const override = obj && obj._cuotaOverride;
+  if(override === true) return CFG.cuotaSindical;
+  if(override === false) return 0;
+  return esPrimeraSemanaDelMes(monday) ? CFG.cuotaSindical : 0;
+}
+function setCurrentWeekCuotaOverride(value){
+  // value: 'auto' | 'si' | 'no'
+  if(value==='si') weekData._cuotaOverride = true;
+  else if(value==='no') weekData._cuotaOverride = false;
+  else delete weekData._cuotaOverride;
 }
 
 // Cerrar semana: una vez cerrada, esa semana ya no se puede editar
@@ -1574,18 +1599,19 @@ function computeWeekSummary(monday, weekDataObj){
   const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
   const totalBruto = jornalCompleto+RM;
 
-  // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37 y 38):
-  // jornada básica (incl. feriado/domingo) + horas extra + dominical +
-  // vacaciones — excluye gratificación, bonif. extra, CTS,
-  // refrigerio/movilidad y adicionales.
-  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones;
+  // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37, 38
+  // y 40): jornada básica (incl. feriado/domingo) + horas extra + dominical
+  // + vacaciones + adicionales (bonos/barridos/operativas especiales) —
+  // excluye gratificación, bonif. extra, CTS y refrigerio/movilidad.
+  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones+ADI;
   const afp = baseAFP*(CFG.afpPct/100);
   let prestamo = 0;
   if(CFG.aplicarPrestamo){
     if(totalJornadas>=6) prestamo=CFG.p6; else if(totalJornadas===5) prestamo=CFG.p5; else if(totalJornadas===4) prestamo=CFG.p4;
   }
-  const renta = CFG.rentaAuto ? calcularRenta5taSemanal(jornalCompleto, CFG.ingresosAcumuladosAnio, getISOWeekNumber(monday)).semanal : CFG.renta;
-  const cuotaSindicalSemana = esPrimeraSemanaDelMes(monday) ? CFG.cuotaSindical : 0;
+  const jornalBasicoNormalSemana = CFG.basico*6*1.5;
+  const renta = CFG.rentaAuto ? calcularRenta5taSemanal(jornalCompleto, CFG.ingresosAcumuladosAnio, getISOWeekNumber(monday), jornalBasicoNormalSemana).semanal : CFG.renta;
+  const cuotaSindicalSemana = getWeekCuotaSindical(monday, weekDataObj);
   const comedorSemana = getWeekComedor(monday, weekDataObj);
   const totalDescuentos = afp+prestamo+comedorSemana+cuotaSindicalSemana+renta;
   const neto = totalBruto-totalDescuentos;
@@ -2020,11 +2046,11 @@ function renderSummary(){
   const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
   const totalBruto = jornalCompleto + RM;
 
-  // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37 y 38):
-  // jornada básica (incl. feriado/domingo) + horas extra + dominical +
-  // vacaciones — excluye gratificación, bonif. extra, CTS,
-  // refrigerio/movilidad y adicionales.
-  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones;
+  // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37, 38
+  // y 40): jornada básica (incl. feriado/domingo) + horas extra + dominical
+  // + vacaciones + adicionales (bonos/barridos/operativas especiales) —
+  // excluye gratificación, bonif. extra, CTS y refrigerio/movilidad.
+  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones+ADI;
   const afp = baseAFP * (CFG.afpPct/100);
   const afpLabels = {onp:'ONP (13%)', habitat:'AFP Habitat (11.37%)', integra:'AFP Integra (11.37%)', prima:'AFP Prima (11.37%)', profuturo:'AFP Profuturo (11.37%)', manual:'Pensión (personalizado)'};
   document.getElementById('rAFPLabel').textContent = afpLabels[CFG.sistemaPension] || 'AFP/ONP';
@@ -2040,14 +2066,15 @@ function renderSummary(){
     const semanaActualNum = getISOWeekNumber(currentMonday);
     const acumuladoAuto = countYearEarningsBefore(currentMonday);
     const ingresosAcumuladosTotal = acumuladoAuto + (CFG.ingresosAcumuladosAnio||0);
-    const r5ta = calcularRenta5taSemanal(jornalCompleto, ingresosAcumuladosTotal, semanaActualNum);
+    const jornalBasicoNormalSemana = CFG.basico*6*1.5;
+    const r5ta = calcularRenta5taSemanal(jornalCompleto, ingresosAcumuladosTotal, semanaActualNum, jornalBasicoNormalSemana);
     rentaCalculada = r5ta.semanal;
     tasaMarginalInfo = r5ta.tasaMarginal;
   } else {
     rentaCalculada = CFG.renta;
   }
   const comedorSemana = getWeekComedor(currentMonday);
-  const cuotaSindicalSemana = esPrimeraSemanaDelMes(currentMonday) ? CFG.cuotaSindical : 0;
+  const cuotaSindicalSemana = getWeekCuotaSindical(currentMonday, weekData);
   const otros = comedorSemana + cuotaSindicalSemana + rentaCalculada;
   const neto = totalBruto - afp - prestamo - otros;
   scheduleWeekSync(totalBruto, afp+prestamo+otros, neto, totalJornadas);
@@ -2089,9 +2116,12 @@ function renderSummary(){
   const comedorInput = document.getElementById('comedorSemanaInput');
   if(document.activeElement !== comedorInput) comedorInput.value = comedorSemana || '';
   document.getElementById('rCuotaSindical').textContent = '-' + fmtMoney(cuotaSindicalSemana);
-  document.getElementById('cuotaSindicalNote').textContent = cuotaSindicalSemana>0
-    ? 'Primera semana del mes: se descuenta'
-    : 'Solo se descuenta la primera semana del mes';
+  const cuotaOverrideSel = document.getElementById('cuotaSindicalOverride');
+  const cuotaOverrideVal = weekData._cuotaOverride===true ? 'si' : weekData._cuotaOverride===false ? 'no' : 'auto';
+  if(document.activeElement !== cuotaOverrideSel) cuotaOverrideSel.value = cuotaOverrideVal;
+  document.getElementById('cuotaSindicalNote').textContent = cuotaOverrideVal!=='auto'
+    ? 'Ajustado manualmente para esta semana'
+    : (cuotaSindicalSemana>0 ? 'Automático: se descuenta esta semana' : 'Automático: no se descuenta esta semana');
   document.getElementById('rRentaVal').textContent = '-' + fmtMoney(rentaCalculada);
   document.getElementById('rNETO').textContent = fmtMoney(neto);
 }
@@ -2150,6 +2180,17 @@ document.getElementById('manualCompareBtn').addEventListener('click', ()=>{
 document.getElementById('comedorSemanaInput').addEventListener('change', async (e)=>{
   if(isCurrentWeekLocked()){ e.target.value = getWeekComedor(currentMonday) || ''; return; }
   setCurrentWeekComedor(parseFloat(e.target.value)||0);
+  await saveWeek();
+  renderSummary();
+});
+
+document.getElementById('cuotaSindicalOverride').addEventListener('change', async (e)=>{
+  if(isCurrentWeekLocked()){
+    const cur = weekData._cuotaOverride===true ? 'si' : weekData._cuotaOverride===false ? 'no' : 'auto';
+    e.target.value = cur;
+    return;
+  }
+  setCurrentWeekCuotaOverride(e.target.value);
   await saveWeek();
   renderSummary();
 });
