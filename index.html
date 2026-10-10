@@ -1268,14 +1268,22 @@ function countMonthJornadas(year, monthIndex){
   let total = 0;
   const dias = [];
 
-  for(let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate()+1)){
-    const monday = getMonday(d);
-    const wk = weekKey(monday);
+  // Lee los datos de cualquier fecha (usa la semana guardada que le toque).
+  const getDayDataFor = (date)=>{
+    const wk = weekKey(getMonday(date));
     if(!(wk in weekCache)) weekCache[wk] = lsGet(wk) || {};
-    const dayKey = isoDate(d);
-    const dayData = weekCache[wk][dayKey];
+    return weekCache[wk][isoDate(date)];
+  };
+
+  for(let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate()+1)){
+    const dayData = getDayDataFor(d);
     if(dayData && dayData.turnos && TURNOS.some(t=>dayData.turnos[t.key])){
-      const {roles, esPegada} = getTurnoRoles(dayData);
+      // Pegada cruzando medianoche: si la Tarde de AYER está marcada, la
+      // Amanecida de hoy es el 2do turno consecutivo (HE) y no cuenta.
+      const prevDate = new Date(d); prevDate.setDate(prevDate.getDate()-1);
+      const prevDD = getDayDataFor(prevDate);
+      const prevTardeMarked = !!(prevDD && prevDD.turnos && prevDD.turnos.tarde);
+      const {roles, esPegada} = getTurnoRoles(dayData, prevTardeMarked);
       const turnosNormales = TURNOS.filter(t=>roles[t.key]==='normal');
       const jornadasDelDia = turnosNormales.length;
       total += jornadasDelDia;
