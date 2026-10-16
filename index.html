@@ -325,6 +325,14 @@
   }
   .chip input{accent-color:var(--accent2);}
   .chip.checked{color:var(--text); border-color:var(--accent2);}
+  .op-chip{cursor:default; justify-content:space-between; gap:10px;}
+  .op-step{display:inline-flex; align-items:center; gap:6px; flex-shrink:0;}
+  .op-step b{min-width:14px; text-align:center; font-family:'IBM Plex Mono',monospace; color:var(--text);}
+  .op-btn{
+    width:26px; height:26px; border-radius:7px; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--text); font-size:1rem; line-height:1; cursor:pointer;
+  }
+  .op-btn:disabled{opacity:0.35; cursor:default;}
 
   .day-subtotal{
     margin-top:10px; padding-top:8px; border-top:1px dashed var(--line);
@@ -1253,7 +1261,8 @@ function weekMonToSatComplete(){
   for(let i=0;i<6;i++){
     const k = isoDate(dates[i]);
     const dd = weekData[k];
-    if(!dd || !dd.turnos || !TURNOS.some(t=>dd.turnos[t.key])) return false;
+    // Un día de capacitación también cuenta como día trabajado (boleta 41).
+    if(!dd || !dd.turnos || !(TURNOS.some(t=>dd.turnos[t.key]) || dd.capacitacion)) return false;
   }
   return true;
 }
@@ -1430,7 +1439,8 @@ function computeMonToSatCompleteFor(weekDataObj, dates){
   for(let i=0;i<6;i++){
     const k = isoDate(dates[i]);
     const dd = weekDataObj[k];
-    if(!dd || !dd.turnos || !TURNOS.some(t=>dd.turnos[t.key])) return false;
+    // Un día de capacitación también cuenta como día trabajado (boleta 41).
+    if(!dd || !dd.turnos || !(TURNOS.some(t=>dd.turnos[t.key]) || dd.capacitacion)) return false;
   }
   return true;
 }
@@ -1721,6 +1731,9 @@ async function handleBoletaFile(file){
   }
 }
 
+const OP_KEYS = ['cuadernas','bodega','descargaCongelado','frutaReefer','jornadaSimple'];
+function opCount(v){ return v===true ? 1 : Math.max(0, Math.min(3, Number(v)||0)); }
+
 function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, weekRolesForDay){
   const feriadoInfo = FERIADOS_2026[dateISO];
   const isFeriado = !!feriadoInfo;
@@ -1766,11 +1779,15 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, weekRolesForDay)
     }
   });
 
-  if(dayData.cuadernas) adicionales += CFG.basico*0.50;
-  if(dayData.bodega) adicionales += CFG.basico*0.55;
-  if(dayData.descargaCongelado) adicionales += CFG.basico*BONIF_DESCARGA_CONGELADO;
-  if(dayData.frutaReefer) adicionales += CFG.basico*BONIF_FRUTA_REEFER;
-  if(dayData.jornadaSimple) adicionales += CFG.basico*BONIF_JORNADA_SIMPLE;
+  // Cada operativa puede repetirse en varios turnos del mismo día (ej.
+  // limpieza de bodega en el turno de 00 y otra vez en el de 16), así que se
+  // guarda como CANTIDAD (0-3) y no como casilla sí/no. Los datos viejos
+  // guardados como true/false se leen como 1/0.
+  adicionales += CFG.basico*0.50*opCount(dayData.cuadernas);
+  adicionales += CFG.basico*0.55*opCount(dayData.bodega);
+  adicionales += CFG.basico*BONIF_DESCARGA_CONGELADO*opCount(dayData.descargaCongelado);
+  adicionales += CFG.basico*BONIF_FRUTA_REEFER*opCount(dayData.frutaReefer);
+  adicionales += CFG.basico*BONIF_JORNADA_SIMPLE*opCount(dayData.jornadaSimple);
 
   // Tarifa por tonelada (destajo): "se aplicará el pago, o por jornada o por
   // tonelada, el que sea mayor" (Cláusula Tercera del convenio).
@@ -1886,26 +1903,23 @@ function buildDayDetailHTML(k, i, d, aplicaRM){
       <summary>Operativas especiales (barridos, bonos, destajo)</summary>
       <div class="ops-body">
         <div class="extras">
-          <label class="chip ${dayData.cuadernas?'checked':''}">
-            <input type="checkbox" data-date="${k}" data-extra="cuadernas" ${dayData.cuadernas?'checked':''}>
-            Limpieza cuadernas Slag/Clinker (50%)
-          </label>
-          <label class="chip ${dayData.bodega?'checked':''}">
-            <input type="checkbox" data-date="${k}" data-extra="bodega" ${dayData.bodega?'checked':''}>
-            Limpieza bodega chatarra (55%)
-          </label>
-          <label class="chip ${dayData.descargaCongelado?'checked':''}">
-            <input type="checkbox" data-date="${k}" data-extra="descargaCongelado" ${dayData.descargaCongelado?'checked':''}>
-            Descarga pescado congelado (+65% jornal)
-          </label>
-          <label class="chip ${dayData.frutaReefer?'checked':''}">
-            <input type="checkbox" data-date="${k}" data-extra="frutaReefer" ${dayData.frutaReefer?'checked':''}>
-            Embarque fruta barco reefer (+50% jornal)
-          </label>
-          <label class="chip ${dayData.jornadaSimple?'checked':''}">
-            <input type="checkbox" data-date="${k}" data-extra="jornadaSimple" ${dayData.jornadaSimple?'checked':''}>
-            Solo jornada, sin operativa específica (+50% jornal)
-          </label>
+          ${[
+            ['cuadernas','Limpieza cuadernas Slag/Clinker (50%)'],
+            ['bodega','Limpieza bodega chatarra (55%)'],
+            ['descargaCongelado','Descarga pescado congelado (+65% jornal)'],
+            ['frutaReefer','Embarque fruta barco reefer (+50% jornal)'],
+            ['jornadaSimple','Solo jornada, sin operativa específica (+50% jornal)']
+          ].map(([key,label])=>{
+            const n = opCount(dayData[key]);
+            return `<div class="chip op-chip ${n>0?'checked':''}">
+            <span>${label}</span>
+            <span class="op-step">
+              <button type="button" class="op-btn" data-date="${k}" data-extra="${key}" data-dir="-1" ${n<=0?'disabled':''} aria-label="Quitar una">−</button>
+              <b>${n}</b>
+              <button type="button" class="op-btn" data-date="${k}" data-extra="${key}" data-dir="1" ${n>=3?'disabled':''} aria-label="Agregar una">+</button>
+            </span>
+          </div>`;
+          }).join('')}
           <label class="chip ${dayData.capacitacion?'checked':''}">
             <input type="checkbox" data-date="${k}" data-extra="capacitacion" ${dayData.capacitacion?'checked':''}>
             Capacitación (8h, pago básico, sin marcar turno)
@@ -1972,6 +1986,14 @@ dayStripContainer.addEventListener('click', (e)=>{
 
 dayDetailContainer.addEventListener('click', async (e)=>{
   if(isCurrentWeekLocked()) return;
+  const opBtn = e.target.closest('.op-btn');
+  if(opBtn){
+    const date = opBtn.dataset.date, key = opBtn.dataset.extra, dir = parseInt(opBtn.dataset.dir,10);
+    weekData[date][key] = Math.max(0, Math.min(3, opCount(weekData[date][key]) + dir));
+    await saveWeek();
+    updateSingleDay(date);
+    return;
+  }
   const btn = e.target.closest('.turno-btn');
   if(btn){
     const date = btn.dataset.date, turno = btn.dataset.turno;
