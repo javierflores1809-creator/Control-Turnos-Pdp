@@ -632,7 +632,10 @@
   .hm-pair{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
   .hm-pair .mini-badge{padding:5px 8px;}
   .hm-pair .mini-badge .mb-val{font-size:0.92rem;}
-  #netoMesVal{color:var(--good);}
+  #netoMesVal{color:var(--good);} .hero-month #earningsBadgeBtn .mb-val{font-size:0.95rem; white-space:nowrap;}
+  .pf-status{font-size:0.92rem; padding:8px 0; color:var(--text);}
+  .pf-newloan{margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);}
+  .pf-newloan .field-row{display:flex; gap:8px; align-items:flex-start;} .pf-newloan .field{flex:1;}
 </style>
 </head>
 <body>
@@ -734,16 +737,10 @@
         <span class="mb-label">Jornadas</span>
         <span class="mb-val" id="monthBadgeVal">0/26</span>
       </button>
-      <div class="hm-pair">
-        <button class="mini-badge" id="earningsBadgeBtn">
-          <span class="mb-label">Bruto</span>
-          <span class="mb-val" id="earningsBadgeVal">S/0</span>
-        </button>
-        <button class="mini-badge" id="netoMesBtn">
-          <span class="mb-label">Neto</span>
-          <span class="mb-val" id="netoMesVal">0</span>
-        </button>
-      </div>
+      <button class="mini-badge" id="earningsBadgeBtn">
+        <span class="mb-label">Bruto / Neto</span>
+        <span class="mb-val"><span id="earningsBadgeVal">0</span> / <span id="netoMesVal">0</span></span>
+      </button>
       <button class="mini-badge" id="loanBadgeBtn" style="display:none;">
       <span class="mb-label">Préstamo (S/)</span>
       <span class="mb-val" id="loanBadgeVal">S/0.00</span>
@@ -977,7 +974,16 @@
               <div class="field"><label>5 días</label><input type="number" id="cfgP5" inputmode="decimal"></div>
               <div class="field"><label>4 días</label><input type="number" id="cfgP4" inputmode="decimal"></div>
             </div>
+            <div class="pf-status" id="loanStatusLine"></div>
             <button type="button" class="bm-secondary" id="openLoanFromPerfil">Ver cuánto llevo descontado</button>
+            <button type="button" class="bm-secondary" id="loanCancelBtn" style="margin-top:8px;">Marcar préstamo como cancelado</button>
+            <div class="pf-newloan">
+              <div class="pf-hint">¿Te dieron un nuevo préstamo? Escribe el monto y empezará a descontar desde cero, desde la semana que tienes abierta (<b id="loanWeekLabel"></b>).</div>
+              <div class="field-row">
+                <div class="field"><input type="number" id="loanNewTotal" step="0.01" inputmode="decimal" placeholder="Monto nuevo (S/)"></div>
+                <button type="button" class="bm-secondary" id="loanNewBtn" style="width:auto; padding:0 16px;">Empezar</button>
+              </div>
+            </div>
           </section>
 
           <section class="pf-sec">
@@ -1260,7 +1266,8 @@ let CFG = {
   especialidad:'estibador', basico:119.39, refri:6.00, movil:6.00,
   sistemaPension:'onp', afpPct:13.00,
   p6:200, p5:150, p4:100, cuotaSindical:100, renta:0, rentaAuto:true, aplicarPrestamo:true,
-  tieneAsignacionFamiliar:false, ingresosAcumuladosAnio:0, prestamoTotal:0
+  tieneAsignacionFamiliar:false, ingresosAcumuladosAnio:0, prestamoTotal:0,
+  prestamoDesde:'', prestamoHasta:'', prestamosPrevios:[]
 };
 
 let currentMonday = getMonday(new Date());
@@ -1314,6 +1321,18 @@ function lsSet(key, value){
   }
 }
 
+// Periodos de préstamo. El préstamo vigente va de prestamoDesde a
+// prestamoHasta (vacío = sin límite). Al cancelarlo se fija prestamoHasta
+// (última semana con descuento); al registrar uno nuevo, el anterior pasa a
+// prestamosPrevios para que las semanas ya cobradas conserven su descuento.
+function loanAppliesTo(mondayISO){
+  if(!CFG.aplicarPrestamo) return false;
+  const inR = p => (!p.desde || mondayISO >= p.desde) && (!p.hasta || mondayISO <= p.hasta);
+  return (CFG.prestamosPrevios||[]).some(inR) || inR({desde:CFG.prestamoDesde, hasta:CFG.prestamoHasta});
+}
+function loanInCurrentPeriod(mondayISO){
+  return (!CFG.prestamoDesde || mondayISO >= CFG.prestamoDesde) && (!CFG.prestamoHasta || mondayISO <= CFG.prestamoHasta);
+}
 async function loadConfig(){
   const saved = lsGet(userStorageKey('turnos-config-general'));
   if(saved){
@@ -1721,6 +1740,7 @@ function countLoanAccumulated(){
   weekKeys.forEach(wk=>{
     const data = lsGet(wk) || {};
     const mondayISO = wk.replace(userStorageKey('semana-'), '');
+    if(!loanInCurrentPeriod(mondayISO)) return;
     let totalJornadasSemana = 0;
     Object.keys(data).forEach(dayKey=>{
       const dd = data[dayKey];
@@ -1758,13 +1778,17 @@ function renderLoanTracker(){
   if(total>0 && acumulado >= total) statusClass = 'over';
   else if(total>0 && pct >= 80) statusClass = 'warn';
 
+  const cancelado = !!CFG.prestamoHasta;
+  if(cancelado) statusClass = 'ok';
   badge.className = 'mini-badge ' + statusClass;
-  document.getElementById('loanBadgeVal').textContent = total>0 ? `${Math.round(acumulado).toLocaleString('en-US')} / ${Math.round(total).toLocaleString('en-US')}` : fmtMoney(acumulado);
+  document.getElementById('loanBadgeVal').textContent = cancelado ? 'Cancelado ✓' : total>0 ? `${Math.round(acumulado).toLocaleString('en-US')} / ${Math.round(total).toLocaleString('en-US')}` : fmtMoney(acumulado);
   document.getElementById('loanTrackerBarFill').style.width = pct + '%';
   document.getElementById('loanTrackerPct').textContent = total>0 ? `${fmtMoney(acumulado)} / ${fmtMoney(total)}` : `${fmtMoney(acumulado)} descontado`;
 
   const noteEl = document.getElementById('loanTrackerNote');
-  if(total<=0){
+  if(cancelado){
+    noteEl.textContent = `Préstamo cancelado: la última semana con descuento fue la del ${CFG.prestamoHasta}. Ya no se descuenta en las semanas siguientes.`;
+  } else if(total<=0){
     noteEl.textContent = 'Escribe el monto total de tu préstamo en Mi perfil para ver cuánto te falta.';
   } else if(acumulado >= total){
     noteEl.textContent = `✓ Préstamo cubierto (${Math.round(pct)}%)`;
@@ -1934,8 +1958,8 @@ function renderMonthEarnings(){
   const {total, porSemana, netoTotal} = countMonthEarnings(year, monthIndex);
   const monthNameFull = monday.toLocaleDateString('es-PE', {month:'long', year:'numeric'});
 
-  document.getElementById('earningsBadgeVal').textContent = fmtMoney(total).replace('S/','');
-  document.getElementById('netoMesVal').textContent = fmtMoney(netoTotal).replace('S/','');
+  document.getElementById('earningsBadgeVal').textContent = Math.round(total).toLocaleString('en-US');
+  document.getElementById('netoMesVal').textContent = Math.round(netoTotal).toLocaleString('en-US');
   document.getElementById('earningsMonthLabel').textContent = monthNameFull.charAt(0).toUpperCase()+monthNameFull.slice(1);
   document.getElementById('earningsMonthTotal').textContent = fmtMoney(total);
 
@@ -1994,7 +2018,7 @@ function computeWeekSummary(monday, weekDataObj){
   const baseAFP = JB+FER+DOMG+HE+CAP+ASIGF+dominical+vacaciones+ADI;
   const afp = baseAFP*(CFG.afpPct/100);
   let prestamo = 0;
-  if(CFG.aplicarPrestamo){
+  if(loanAppliesTo(isoDate(monday))){
     if(totalJornadas>=6) prestamo=CFG.p6; else if(totalJornadas===5) prestamo=CFG.p5; else if(totalJornadas===4) prestamo=CFG.p4;
   }
   const jornalBasicoNormalSemana = CFG.basico*6*1.5;
@@ -2478,7 +2502,7 @@ function renderSummary(){
   const afpLabels = {onp:'ONP (13%)', habitat:'AFP Habitat (11.37%)', integra:'AFP Integra (11.37%)', prima:'AFP Prima (11.37%)', profuturo:'AFP Profuturo (11.37%)', manual:'Pensión (personalizado)'};
   document.getElementById('rAFPLabel').textContent = afpLabels[CFG.sistemaPension] || 'AFP/ONP';
   let prestamo = 0;
-  if(CFG.aplicarPrestamo){
+  if(loanAppliesTo(isoDate(currentMonday))){
     if(totalJornadas>=6) prestamo = CFG.p6;
     else if(totalJornadas===5) prestamo = CFG.p5;
     else if(totalJornadas===4) prestamo = CFG.p4;
@@ -2588,7 +2612,6 @@ function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.getElementById('monthBadgeBtn').addEventListener('click', ()=>openModal('monthModal'));
 document.getElementById('loanBadgeBtn').addEventListener('click', ()=>openModal('loanModal'));
 document.getElementById('earningsBadgeBtn').addEventListener('click', ()=>openModal('earningsModal'));
-document.getElementById('netoMesBtn').addEventListener('click', ()=>openModal('earningsModal'));
 
 document.getElementById('boletaFileInput').addEventListener('change', (e)=>{
   const file = e.target.files[0];
@@ -2903,6 +2926,42 @@ document.getElementById('cuotaWeeksList').addEventListener('change', async (e)=>
 document.getElementById('calcBtn').addEventListener('click', ()=>openModal('calcModal'));
 document.getElementById('boletaCta').addEventListener('click', ()=>{ renderCuotaWeeks(); openModal('boletaModal'); });
 document.getElementById('openLoanFromPerfil').addEventListener('click', ()=>{ closeModal('settingsModal'); openModal('loanModal'); });
+
+// ---------- Préstamo: cancelar / nuevo ----------
+function refreshLoanPerfil(){
+  const lbl = document.getElementById('loanWeekLabel');
+  const fin = new Date(currentMonday); fin.setDate(fin.getDate()+6);
+  lbl.textContent = `${currentMonday.getDate()}/${currentMonday.getMonth()+1} – ${fin.getDate()}/${fin.getMonth()+1}`;
+  const st = document.getElementById('loanStatusLine');
+  const cancel = document.getElementById('loanCancelBtn');
+  if(!CFG.aplicarPrestamo){ st.textContent = 'Sin préstamo activo.'; cancel.style.display='none'; return; }
+  if(CFG.prestamoHasta){ st.textContent = `Préstamo cancelado. Último descuento: semana del ${CFG.prestamoHasta}.`; cancel.style.display='none'; }
+  else { st.textContent = CFG.prestamoDesde ? `Préstamo activo desde la semana del ${CFG.prestamoDesde}.` : 'Préstamo activo.'; cancel.style.display='block'; }
+}
+async function afterLoanChange(){
+  await saveConfig(); applyConfigToInputs(); refreshLoanPerfil(); renderDays(); renderSummary();
+}
+document.getElementById('loanCancelBtn').addEventListener('click', async ()=>{
+  const iso = isoDate(currentMonday);
+  if(!confirm(`¿Marcar el préstamo como cancelado?\n\nLa semana que tienes abierta (${document.getElementById('loanWeekLabel').textContent}) será la ÚLTIMA con descuento. Las semanas siguientes ya no descontarán préstamo.`)) return;
+  CFG.prestamoHasta = iso;
+  await afterLoanChange();
+});
+document.getElementById('loanNewBtn').addEventListener('click', async ()=>{
+  const monto = parseFloat(document.getElementById('loanNewTotal').value);
+  if(!(monto>0)){ alert('Escribe el monto del nuevo préstamo.'); return; }
+  const iso = isoDate(currentMonday);
+  if(!confirm(`¿Registrar un nuevo préstamo de S/${monto.toFixed(2)}?\n\nEmpezará a descontar desde cero, desde la semana ${document.getElementById('loanWeekLabel').textContent}. El préstamo anterior queda guardado en el historial.`)) return;
+  if(CFG.aplicarPrestamo && (CFG.prestamoTotal>0 || CFG.prestamoDesde || CFG.prestamoHasta)){
+    const antes = new Date(currentMonday); antes.setDate(antes.getDate()-7);
+    const hasta = (CFG.prestamoHasta && CFG.prestamoHasta < iso) ? CFG.prestamoHasta : isoDate(antes);
+    CFG.prestamosPrevios = (CFG.prestamosPrevios||[]).concat([{desde:CFG.prestamoDesde||'', hasta, total:CFG.prestamoTotal||0}]);
+  }
+  CFG.aplicarPrestamo = true; CFG.prestamoTotal = monto; CFG.prestamoDesde = iso; CFG.prestamoHasta = '';
+  document.getElementById('loanNewTotal').value = '';
+  await afterLoanChange();
+});
+document.querySelector('[data-nav=perfil]').addEventListener('click', refreshLoanPerfil);
 
 document.querySelectorAll('.modal-close').forEach(btn=>{
   btn.addEventListener('click', ()=>closeModal(btn.dataset.close));
