@@ -496,14 +496,14 @@
   /* Barra inferior */
   .bottom-nav{
     position:fixed; left:0; right:0; bottom:0; z-index:30;
-    display:grid; grid-template-columns:repeat(4,1fr);
+    display:grid; grid-template-columns:repeat(5,1fr);
     background:var(--surface); border-top:1px solid var(--line);
     padding:6px 8px calc(6px + env(safe-area-inset-bottom));
   }
   .bottom-nav > button, .bottom-nav .corner-menu-btn{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
     height:56px; width:100%; background:none; border:none; border-radius:12px;
-    color:var(--muted); font-family:inherit; font-size:0.78rem; font-weight:500; cursor:pointer;
+    color:var(--muted); font-family:inherit; font-size:0.72rem; font-weight:500; cursor:pointer;
   }
   .bottom-nav svg{width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
   .bottom-nav circle{fill:currentColor; stroke:none;}
@@ -556,6 +556,83 @@
   .header-breakdown-toggle summary{padding:10px 14px; min-height:44px;}
   .help-card{display:flex; flex-direction:column; gap:8px; padding:12px 14px; font-size:0.9rem;}
   .help-card button{align-self:flex-start; min-height:40px;}
+
+  /* panel dividido: semana | mes */
+  .hero-split{display:grid; grid-template-columns:1.1fr 1fr; gap:14px; align-items:stretch;}
+  .hero-col{min-width:0;}
+  .hero-split .hero-neto{font-size:1.85rem; margin:2px 0 8px;}
+  .hero-split .hero-sub{gap:14px;}
+  .hero-split .hero-sub b{font-size:0.9rem;}
+  .hero-month{display:flex; flex-direction:column; gap:8px; padding-left:14px; border-left:1px solid var(--line);}
+  .hero-month .mini-badge{
+    flex:1; flex-direction:column; align-items:flex-start; justify-content:center; gap:1px;
+    padding:6px 10px; border-radius:12px; min-height:0; width:100%;
+  }
+  .hero-month .mini-badge .mb-label{font-size:0.74rem;}
+  .hero-month .mini-badge .mb-val{font-size:1.15rem;}
+  .tiles:not(:has(.mini-badge:not([style*="display: none"]))){display:none;}
+  .tiles .mini-badge:only-child{grid-column:1/-1;}
+
+  /* perfil, feriados, boleta */
+  .pf-sec{border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; background:var(--surface);}
+  .pf-sec h3{margin:0 0 8px; font-size:1.05rem; font-family:'Oswald',sans-serif; font-weight:500;}
+  .pf-hint{font-size:0.85rem; color:var(--muted); margin:0 0 8px;}
+  .pf .field{margin-bottom:10px;}
+  .pf .field label, .pf-sec .field label{display:block; font-size:0.9rem; margin-bottom:4px;}
+  .pf input[type=number], .pf select, .pf input[type=text], .pf-sec input[type=date], .pf-sec input[type=text]{
+    width:100%; min-height:48px; padding:0 12px; font-size:1.05rem; font-family:inherit;
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:12px;
+  }
+  .pf-switch{display:flex; align-items:center; gap:12px; min-height:52px; margin-bottom:10px; font-size:1rem; cursor:pointer;}
+  .pf-switch input{width:26px; height:26px; flex-shrink:0; accent-color:var(--accent2);}
+  .pf-adv{border:1px solid var(--line); border-radius:14px; padding:0 14px; background:var(--surface);}
+  .pf-adv summary{min-height:48px; display:flex; align-items:center; cursor:pointer; font-size:0.95rem; color:var(--muted);}
+  .pf-adv[open]{padding-bottom:10px;}
+  .bm-cta{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+    margin:0 0 14px; padding:14px 16px; min-height:60px; text-align:left;
+    background:var(--surface); color:var(--text); border:1px solid var(--accent2); border-radius:14px;
+    font-family:inherit; font-size:1rem; cursor:pointer;
+  }
+  .bm-cta small{display:block; font-size:0.82rem; color:var(--muted); margin-top:2px;}
+  .bm-cta > span:last-child{font-size:1.6rem; color:var(--accent2);}
+  .feriado-bar{
+    display:block; width:100%; margin-top:8px; padding:9px 14px; min-height:40px; text-align:left;
+    background:none; border:1px dashed var(--line); border-radius:12px; color:var(--muted);
+    font-family:inherit; font-size:0.85rem; cursor:pointer;
+  }
+  .feriado-bar.has{border:1px solid var(--feriado); color:var(--feriado); background:var(--feriado-dim); font-weight:600;}
+  .fer-row{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); font-size:0.95rem;}
+  .fer-row.past{opacity:0.5;}
+  .fer-name{font-size:0.82rem; color:var(--muted);}
+  .fer-del, .cw-row select{
+    min-height:40px; padding:0 12px; background:var(--surface-2); color:var(--text);
+    border:1px solid var(--line); border-radius:10px; font-family:inherit; font-size:0.9rem;
+  }
+  .cw-row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); font-size:0.95rem;}
+  .cw-row small{display:block; color:var(--muted); font-size:0.78rem;}
+  .tiles .mini-badge .mb-val{font-size:1.05rem;}
+  .cw-row select{max-width:58%;} .cw-row > span{min-width:0;}
+  #loanBadgeBtn .mb-val{font-size:0.98rem;}
+
+  /* acciones compactas + préstamo en la columna del mes */
+  .action-row{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .act-btn{
+    display:flex; align-items:center; gap:8px; min-height:48px; padding:6px 12px; text-align:left;
+    background:none; color:var(--text); border:1px solid var(--line); border-radius:12px;
+    font-family:inherit; font-size:0.85rem; font-weight:500; line-height:1.2; cursor:pointer;
+  }
+  .act-btn svg{width:20px; height:20px; flex-shrink:0; fill:none; stroke:var(--accent2); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+  .act-btn:active{background:var(--surface-2);}
+  .hero-month{gap:6px;}
+  .hero-month .mini-badge{padding:5px 10px;}
+  .hero-month #loanBadgeBtn .mb-val{font-size:0.9rem;}
+  .calc-body .sd-row{padding:8px 0;}
+  @media (max-width:360px){ .act-btn{font-size:0.78rem; padding:6px 8px;} }
+  .hm-pair{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .hm-pair .mini-badge{padding:5px 8px;}
+  .hm-pair .mini-badge .mb-val{font-size:0.92rem;}
+  #netoMesVal{color:var(--good);}
 </style>
 </head>
 <body>
@@ -639,34 +716,61 @@
     <button id="nextWeek" class="wn-arrow" aria-label="Semana siguiente">›</button>
   </div>
 
-  <section class="hero" aria-live="polite">
-    <div class="hero-label">Neto estimado de la semana</div>
-    <div class="hero-neto money" id="headerNeto">S/0.00</div>
-    <div class="hero-sub">
-      <div><span>Bruto</span><b class="money" id="totalBruto">S/0.00</b></div>
-      <div><span>Descuentos</span><b class="money" id="headerDescuentos">-S/0.00</b></div>
-    </div>
-    <div class="hero-jornadas" id="jornadasQuickView">0 jornadas</div>
-  </section>
+  <button type="button" class="feriado-bar" id="feriadoBar">Feriados</button>
 
-  <div class="tiles">
-    <button class="mini-badge" id="monthBadgeBtn">
-      <span class="mb-label">Jornadas del mes</span>
-      <span class="mb-val" id="monthBadgeVal">0/26</span>
+  <section class="hero hero-split" aria-live="polite">
+    <div class="hero-col hero-week">
+      <div class="hero-label">Neto de la semana</div>
+      <div class="hero-neto money" id="headerNeto">S/0.00</div>
+      <div class="hero-sub">
+        <div><span>Bruto</span><b class="money" id="totalBruto">S/0.00</b></div>
+        <div><span>Descuentos</span><b class="money" id="headerDescuentos">-S/0.00</b></div>
+      </div>
+      <div class="hero-jornadas" id="jornadasQuickView">0 jornadas</div>
+    </div>
+    <div class="hero-col hero-month">
+      <div class="hero-label">Acumulado del mes</div>
+      <button class="mini-badge" id="monthBadgeBtn">
+        <span class="mb-label">Jornadas</span>
+        <span class="mb-val" id="monthBadgeVal">0/26</span>
+      </button>
+      <div class="hm-pair">
+        <button class="mini-badge" id="earningsBadgeBtn">
+          <span class="mb-label">Bruto</span>
+          <span class="mb-val" id="earningsBadgeVal">S/0</span>
+        </button>
+        <button class="mini-badge" id="netoMesBtn">
+          <span class="mb-label">Neto</span>
+          <span class="mb-val" id="netoMesVal">0</span>
+        </button>
+      </div>
+      <button class="mini-badge" id="loanBadgeBtn" style="display:none;">
+      <span class="mb-label">Préstamo (S/)</span>
+      <span class="mb-val" id="loanBadgeVal">S/0.00</span>
     </button>
-    <button class="mini-badge" id="earningsBadgeBtn">
-      <span class="mb-label">Bruto acumulado del mes</span>
-      <span class="mb-val" id="earningsBadgeVal">S/0</span>
+    </div>
+  </section>
+  <div class="action-row">
+    <button type="button" class="act-btn" id="boletaCta">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12h6"/></svg>
+      <span>Mi boleta</span>
     </button>
-    <button class="mini-badge" id="loanBadgeBtn" style="display:none;">
-      <span class="mb-label">Préstamo</span>
-      <span class="mb-val" id="loanBadgeVal">S/0/S/0</span>
+    <button type="button" class="act-btn" id="calcBtn">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8.5 8h7M8.5 12h2M13.5 12h2M8.5 16h2M13.5 16h2"/></svg>
+      <span>Paso a paso</span>
     </button>
   </div>
 
-  <details class="ops-toggle header-breakdown-toggle">
-    <summary>Ver el cálculo paso a paso</summary>
-    <div class="ops-body" id="summaryDetail">
+
+  
+</header>
+
+<main>
+  <div class="modal-overlay" id="calcModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Paso a paso</span><button class="modal-close" data-close="calcModal" aria-label="Cerrar">✕</button></div>
+      <div class="modal-body">
+        <div class="calc-body" id="summaryDetail">
       <div class="sd-section-label">Jornadas de la semana</div>
       <div class="sd-row"><span>Jornadas normales</span><span class="val" id="rJornadasNormales">0</span></div>
       <div class="sd-row"><span>Jornadas en horas extra (pegadas)</span><span class="val" id="rJornadasHE">0</span></div>
@@ -697,10 +801,10 @@
       <div class="sd-row"><span id="rRentaLabel">Renta 5ta</span><span class="val money" id="rRentaVal">S/0.00</span></div>
       <div class="sd-row neto-row"><span>Neto estimado</span><span class="val money" id="rNETO">S/0.00</span></div>
     </div>
-  </details>
-</header>
+      </div>
+    </div>
+  </div>
 
-<main>
   <div class="modal-overlay" id="boletaModal">
     <div class="modal-panel">
       <div class="modal-head"><span>Descuentos de tu boleta</span><button class="modal-close" data-close="boletaModal" aria-label="Cerrar">✕</button></div>
@@ -717,9 +821,13 @@
           <input type="number" id="rentaSemanaInput" step="0.01" inputmode="decimal" placeholder="Automático">
         </div>
         <div class="bm-field">
-          <label for="cuotaSindicalOverride">Cuota sindical</label>
+          <label for="cuotaSindicalOverride">Cuota sindical de esta semana</label>
           <div class="bm-hint" id="cuotaSindicalNote"></div>
           <select id="cuotaSindicalOverride"><option value="auto">Que el sistema decida</option><option value="si">Sí, me la cobraron esta semana</option><option value="no">No me la cobraron esta semana</option></select>
+          <details class="pf-adv" style="margin-top:10px;">
+            <summary>Marcar en qué otras semanas me la cobraron</summary>
+            <div id="cuotaWeeksList"></div>
+          </details>
         </div>
         <div class="bm-result"><span>Neto estimado con estos datos</span><b class="money" id="boletaNetoEcho">S/0.00</b></div>
         <button type="button" class="bm-secondary" id="openCompareFromBoleta">Comparar con el PDF de mi boleta (opcional)</button>
@@ -823,81 +931,116 @@
 
   <div class="modal-overlay" id="settingsModal">
     <div class="modal-panel">
-      <div class="modal-head"><span>Ajustes de cálculo</span><button class="modal-close" data-close="settingsModal">✕</button></div>
+      <div class="modal-head"><span>Mi perfil</span><button class="modal-close" data-close="settingsModal" aria-label="Cerrar">✕</button></div>
       <div class="modal-body">
-        <div class="settings-grid">
-          <div class="field">
-            <label>Especialidad</label>
-            <select id="cfgEspecialidad">
-              <option value="estibador">Estibador (S/119.39)</option>
-              <option value="tarjador">Tarjador (S/119.39)</option>
-              <option value="capataz">Capataz (S/130.14)</option>
-              <option value="winchero">Winchero (S/182.88)</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Jornal básico por turno (S/) — se ajusta solo, pero puedes editarlo si cambia el convenio</label>
-            <input type="number" id="cfgBasico" step="0.01">
-          </div>
-          <div class="field-row">
+        <div class="settings-grid pf">
+          <section class="pf-sec">
+            <h3>Mi pensión</h3>
+            <div class="pf-hint">Elige a qué sistema aportas. El descuento se calcula solo.</div>
             <div class="field">
-              <label>Refrigerio por turno (S/)</label>
-              <input type="number" id="cfgRefri" step="0.01">
+              <select id="cfgSistemaPension">
+                <option value="onp">ONP (13%)</option>
+                <option value="habitat">AFP Habitat (11.37%)</option>
+                <option value="integra">AFP Integra (11.37%)</option>
+                <option value="prima">AFP Prima (11.37%)</option>
+                <option value="profuturo">AFP Profuturo (11.37%)</option>
+                <option value="manual">Otro porcentaje</option>
+              </select>
+            </div>
+            <div class="field" id="cfgAfpManualField" style="display:none;">
+              <label>Porcentaje de descuento (%)</label>
+              <input type="number" id="cfgAfp" step="0.01" inputmode="decimal">
+            </div>
+          </section>
+
+          <section class="pf-sec">
+            <h3>Asignación familiar</h3>
+            <label class="pf-switch">
+              <input type="checkbox" id="cfgAsignacionFamiliar">
+              <span>Sí recibo asignación familiar (<span id="asigFamiliarMontoLabel">S/4.35</span> por jornada)</span>
+            </label>
+          </section>
+
+          <section class="pf-sec">
+            <h3>Mi préstamo</h3>
+            <label class="pf-switch" id="loanToggleChip">
+              <input type="checkbox" id="cfgAplicarPrestamo">
+              <span>Tengo un préstamo con descuento semanal</span>
+            </label>
+            <div class="field">
+              <label for="cfgPrestamoTotal">Monto total del préstamo (S/)</label>
+              <input type="number" id="cfgPrestamoTotal" step="0.01" inputmode="decimal" placeholder="Ej. 3000">
+            </div>
+            <div class="pf-hint">Descuento por semana según tus jornadas trabajadas:</div>
+            <div class="field-row">
+              <div class="field"><label>6 o más</label><input type="number" id="cfgP6" inputmode="decimal"></div>
+              <div class="field"><label>5 días</label><input type="number" id="cfgP5" inputmode="decimal"></div>
+              <div class="field"><label>4 días</label><input type="number" id="cfgP4" inputmode="decimal"></div>
+            </div>
+            <button type="button" class="bm-secondary" id="openLoanFromPerfil">Ver cuánto llevo descontado</button>
+          </section>
+
+          <section class="pf-sec">
+            <h3>Cuota sindical</h3>
+            <div class="field">
+              <label for="cfgCuotaSindical">Monto (S/)</label>
+              <input type="number" id="cfgCuotaSindical" step="0.01" inputmode="decimal">
+            </div>
+            <div class="pf-hint">Para marcar en qué semanas te la descontaron, entra a <b>Mi boleta</b>.</div>
+          </section>
+
+          <section class="pf-sec">
+            <h3>Renta de 5ta categoría</h3>
+            <label class="pf-switch">
+              <input type="checkbox" id="cfgRentaAuto">
+              <span>Que el sistema la calcule solo</span>
+            </label>
+            <div class="field" id="cfgRentaManualField" style="display:none;">
+              <label>Monto fijo por semana (S/)</label>
+              <input type="number" id="cfgRenta" step="0.01" inputmode="decimal">
             </div>
             <div class="field">
-              <label>Movilidad por turno (S/)</label>
-              <input type="number" id="cfgMovil" step="0.01">
+              <label for="cfgIngresosAcumulados">Ingresos del año antes de usar esta página (S/) — opcional</label>
+              <input type="number" id="cfgIngresosAcumulados" step="0.01" inputmode="decimal">
             </div>
-          </div>
-          <div class="field">
-            <label>Sistema de pensión (aplica el descuento exacto de ley)</label>
-            <select id="cfgSistemaPension">
-              <option value="onp">ONP — 13%</option>
-              <option value="habitat">AFP Habitat — 11.37% (10% aporte + 1.37% seguro)</option>
-              <option value="integra">AFP Integra — 11.37% (10% aporte + 1.37% seguro)</option>
-              <option value="prima">AFP Prima — 11.37% (10% aporte + 1.37% seguro, verificado con tu boleta)</option>
-              <option value="profuturo">AFP Profuturo — 11.37% (10% aporte + 1.37% seguro)</option>
-              <option value="manual">Otro / personalizado</option>
-            </select>
-          </div>
-          <div class="field" id="cfgAfpManualField" style="display:none;">
-            <label>Descuento personalizado (%)</label>
-            <input type="number" id="cfgAfp" step="0.01">
-          </div>
-          <div class="sd-section-label">Escala de préstamo semanal (según jornadas trabajadas, incluye feriado y HE)</div>
-          <div class="field-row">
-            <div class="field"><label>6+ días (S/)</label><input type="number" id="cfgP6"></div>
-            <div class="field"><label>5 días (S/)</label><input type="number" id="cfgP5"></div>
-            <div class="field"><label>4 días (S/)</label><input type="number" id="cfgP4"></div>
-          </div>
-          <div class="field">
-            <label>Cuota sindical (S/)</label>
-            <input type="number" id="cfgCuotaSindical" step="0.01">
-          </div>
-          <div class="chip" style="align-self:flex-start;">
-            <input type="checkbox" id="cfgAsignacionFamiliar">
-            <span>Recibe asignación familiar (tiene hijos) — <span id="asigFamiliarMontoLabel">S/4.35</span> por jornada</span>
-          </div>
-          <div class="chip" id="loanToggleChip" style="align-self:flex-start;">
-            <input type="checkbox" id="cfgAplicarPrestamo">
-            <span>Tengo préstamo activo (aplica el descuento automático según la escala de arriba)</span>
-          </div>
-          <div class="chip" style="align-self:flex-start;">
-            <input type="checkbox" id="cfgRentaAuto">
-            <span>Calcular renta de 5ta categoría automáticamente (UIT 2026: S/5,500)</span>
-          </div>
-          <div class="field" id="cfgRentaManualField" style="display:none;">
-            <label>Renta 5ta categ. manual (S/)</label>
-            <input type="number" id="cfgRenta" step="0.01">
-          </div>
-          <div class="field">
-            <label>Ingresos ADICIONALES del año no registrados en la herramienta (S/) — opcional, solo si empezaste a usarla a mitad de año. Lo ya guardado aquí se suma automático.</label>
-            <input type="number" id="cfgIngresosAcumulados" step="0.01">
-          </div>
-          <div class="field">
-            <label>Monto total del préstamo (S/) — para ver el acumulado descontado</label>
-            <input type="number" id="cfgPrestamoTotal" step="0.01">
-          </div>
+          </section>
+
+          <details class="pf-adv">
+            <summary>Sueldo y turnos (normalmente no hace falta tocarlos)</summary>
+            <div class="field">
+              <label>Especialidad</label>
+              <select id="cfgEspecialidad">
+                <option value="estibador">Estibador (S/119.39)</option>
+                <option value="tarjador">Tarjador (S/119.39)</option>
+                <option value="capataz">Capataz (S/130.14)</option>
+                <option value="winchero">Winchero (S/182.88)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Jornal básico por turno (S/)</label>
+              <input type="number" id="cfgBasico" step="0.01" inputmode="decimal">
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Refrigerio por turno (S/)</label><input type="number" id="cfgRefri" step="0.01" inputmode="decimal"></div>
+              <div class="field"><label>Movilidad por turno (S/)</label><input type="number" id="cfgMovil" step="0.01" inputmode="decimal"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="feriadosModal">
+    <div class="modal-panel">
+      <div class="modal-head"><span>Feriados</span><button class="modal-close" data-close="feriadosModal" aria-label="Cerrar">✕</button></div>
+      <div class="modal-body">
+        <p class="bm-intro">Los días feriados se pagan con 100% de recargo y el sistema los marca solo. Si hay uno que no aparece, agrégalo aquí.</p>
+        <div id="feriadosList"></div>
+        <div class="pf-sec" style="margin-top:16px;">
+          <h3>Agregar un feriado</h3>
+          <div class="field"><label for="ferNewDate">Fecha</label><input type="date" id="ferNewDate"></div>
+          <div class="field"><label for="ferNewLabel">Nombre</label><input type="text" id="ferNewLabel" placeholder="Ej. Feriado decretado"></div>
+          <button type="button" class="bm-secondary" id="ferAddBtn">Agregar feriado</button>
         </div>
       </div>
     </div>
@@ -940,12 +1083,15 @@
   <button type="button" data-nav="boleta">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12h6"/></svg><span>Mi boleta</span>
   </button>
+  <button type="button" data-nav="perfil">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg><span>Mi perfil</span>
+  </button>
   <div class="corner-menu-wrap">
     <button type="button" id="cornerMenuBtn" class="corner-menu-btn">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg><span>Más</span>
     </button>
     <div class="corner-menu" id="cornerMenu">
-      <button data-open="settingsModal">Ajustes de cálculo</button>
+      <button data-open="feriadosModal">Feriados</button>
       <button data-open="infoModal">Cómo se calcula</button>
       <button data-open="compareModal">Comparar con PDF de boleta</button>
       <button id="adminMenuBtn" data-open="adminModal" style="display:none;">Ver todos (Admin)</button>
@@ -1004,8 +1150,31 @@ const FERIADOS_2026 = {
   '2026-11-01':{label:'Todos los Santos', scope:'nacional'},
   '2026-12-08':{label:'Inmaculada Concepción', scope:'nacional'},
   '2026-12-09':{label:'Batalla de Ayacucho', scope:'nacional'},
-  '2026-12-25':{label:'Navidad', scope:'nacional'}
+  '2026-12-25':{label:'Navidad', scope:'nacional'},
+  '2027-01-01':{label:'Año Nuevo', scope:'nacional'},
+  '2027-01-10':{label:'Día del Trabajador Portuario', scope:'empresa'},
+  '2027-03-25':{label:'Jueves Santo', scope:'nacional'},
+  '2027-03-26':{label:'Viernes Santo', scope:'nacional'},
+  '2027-05-01':{label:'Día del Trabajo', scope:'nacional'},
+  '2027-06-07':{label:'Batalla de Arica y Día de la Bandera', scope:'nacional'},
+  '2027-06-29':{label:'San Pedro y San Pablo', scope:'nacional'},
+  '2027-07-23':{label:'Día de la Fuerza Aérea del Perú', scope:'nacional'},
+  '2027-07-28':{label:'Fiestas Patrias', scope:'nacional'},
+  '2027-07-29':{label:'Fiestas Patrias', scope:'nacional'},
+  '2027-08-06':{label:'Batalla de Junín', scope:'nacional'},
+  '2027-08-30':{label:'Santa Rosa de Lima', scope:'nacional'},
+  '2027-09-08':{label:'Aniversario Desembarco Expedición Libertadora (Paracas / Pisco)', scope:'provincial'},
+  '2027-10-08':{label:'Combate de Angamos', scope:'nacional'},
+  '2027-11-01':{label:'Todos los Santos', scope:'nacional'},
+  '2027-12-08':{label:'Inmaculada Concepción', scope:'nacional'},
+  '2027-12-09':{label:'Batalla de Ayacucho', scope:'nacional'},
+  '2027-12-25':{label:'Navidad', scope:'nacional'}
 };
+// Feriados que el propio usuario agrega (p. ej. uno decretado a último
+// momento o la Vendimia de Ica cuando se confirme la fecha). Se guardan
+// por usuario y se tratan igual que el resto: pago con 100% de recargo.
+function getFeriadosExtra(){ return lsGet(userStorageKey('turnos-feriados-extra')) || {}; }
+function getFeriado(iso){ return FERIADOS_2026[iso] || getFeriadosExtra()[iso] || null; }
 
 const TARIFA_HARINA = 1.20;      // S/ por tonelada, embarque harina de pescado en sacos
 const TARIFA_CONGELADO = 2.60;   // S/ por tonelada, embarque pescado congelado
@@ -1393,7 +1562,7 @@ function computeWeekRoles(monday, weekDataObj){
     const dayData = weekDataObj[k] || DEFAULT_DAY_DATA;
     const prevTardeMarked = getPrevDayTardeMarked(monday, weekDataObj, i);
     const r = getTurnoRoles(dayData, prevTardeMarked);
-    const isFeriado = !!FERIADOS_2026[k];
+    const isFeriado = !!getFeriado(k);
     const domingoRecargo = (i===6) && monToSatComplete && !isFeriado;
     return {k, roles: {...r.roles}, esPegada: r.esPegada, crossDayPegada: r.crossDayPegada, warning: r.warning, isFeriado, domingoRecargo};
   });
@@ -1575,29 +1744,32 @@ function countLoanAccumulated(){
 
 function renderLoanTracker(){
   const badge = document.getElementById('loanBadgeBtn');
-  if(!CFG.aplicarPrestamo || CFG.prestamoTotal<=0){
+  if(!CFG.aplicarPrestamo){
     badge.style.display = 'none';
     return;
   }
   badge.style.display = 'flex';
 
   const {acumulado, semanas} = countLoanAccumulated();
-  const pct = Math.min(100, (acumulado/CFG.prestamoTotal)*100);
+  const total = CFG.prestamoTotal || 0;
+  const pct = total>0 ? Math.min(100, (acumulado/total)*100) : 0;
 
   let statusClass = 'ok';
-  if(acumulado >= CFG.prestamoTotal) statusClass = 'over';
-  else if(pct >= 80) statusClass = 'warn';
+  if(total>0 && acumulado >= total) statusClass = 'over';
+  else if(total>0 && pct >= 80) statusClass = 'warn';
 
   badge.className = 'mini-badge ' + statusClass;
-  document.getElementById('loanBadgeVal').textContent = `${Math.round(acumulado)}/${Math.round(CFG.prestamoTotal)}`;
+  document.getElementById('loanBadgeVal').textContent = total>0 ? `${Math.round(acumulado).toLocaleString('en-US')} / ${Math.round(total).toLocaleString('en-US')}` : fmtMoney(acumulado);
   document.getElementById('loanTrackerBarFill').style.width = pct + '%';
-  document.getElementById('loanTrackerPct').textContent = `${fmtMoney(acumulado)} / ${fmtMoney(CFG.prestamoTotal)}`;
+  document.getElementById('loanTrackerPct').textContent = total>0 ? `${fmtMoney(acumulado)} / ${fmtMoney(total)}` : `${fmtMoney(acumulado)} descontado`;
 
   const noteEl = document.getElementById('loanTrackerNote');
-  if(acumulado >= CFG.prestamoTotal){
-    noteEl.textContent = `✓ Préstamo cubierto (${Math.round(pct)}%) — ver semanas`;
+  if(total<=0){
+    noteEl.textContent = 'Escribe el monto total de tu préstamo en Mi perfil para ver cuánto te falta.';
+  } else if(acumulado >= total){
+    noteEl.textContent = `✓ Préstamo cubierto (${Math.round(pct)}%)`;
   } else {
-    noteEl.textContent = `${Math.round(pct)}% pagado · faltan ${fmtMoney(CFG.prestamoTotal-acumulado)} — ver semanas`;
+    noteEl.textContent = `${Math.round(pct)}% pagado · faltan ${fmtMoney(total-acumulado)}`;
   }
 
   const listEl = document.getElementById('loanTrackerWeeksList');
@@ -1663,6 +1835,7 @@ function countMonthEarnings(year, monthIndex){
   const lastDay = new Date(year, monthIndex+1, 0);
   const weekCache = {};
   const porSemana = {};
+  const weekMonthBruto = {};
   let total = 0;
   for(let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate()+1)){
     const monday = getMonday(d);
@@ -1676,9 +1849,19 @@ function countMonthEarnings(year, monthIndex){
     total += amount;
     if(amount>0){
       porSemana[wk] = (porSemana[wk]||0) + amount;
+      weekMonthBruto[wk] = {monday, parte: (weekMonthBruto[wk]?weekMonthBruto[wk].parte:0) + amount};
     }
   }
-  return {total, porSemana};
+  // Neto del mes: el neto de cada semana (con sus descuentos reales) se reparte
+  // en proporción a la parte de esa semana que cae dentro del mes.
+  let netoTotal = 0;
+  Object.keys(weekMonthBruto).forEach(wk=>{
+    try{
+      const r = computeWeekSummary(weekMonthBruto[wk].monday, lsGet(wk) || {});
+      if(r && r.totalBruto>0) netoTotal += r.neto * Math.min(1, weekMonthBruto[wk].parte / r.totalBruto);
+    }catch(e){}
+  });
+  return {total, porSemana, netoTotal};
 }
 
 // Suma automáticamente lo generado (total bruto) desde el 1 de enero hasta
@@ -1748,10 +1931,11 @@ function renderMonthEarnings(){
   const monday = currentMonday;
   const year = monday.getFullYear();
   const monthIndex = monday.getMonth();
-  const {total, porSemana} = countMonthEarnings(year, monthIndex);
+  const {total, porSemana, netoTotal} = countMonthEarnings(year, monthIndex);
   const monthNameFull = monday.toLocaleDateString('es-PE', {month:'long', year:'numeric'});
 
   document.getElementById('earningsBadgeVal').textContent = fmtMoney(total).replace('S/','');
+  document.getElementById('netoMesVal').textContent = fmtMoney(netoTotal).replace('S/','');
   document.getElementById('earningsMonthLabel').textContent = monthNameFull.charAt(0).toUpperCase()+monthNameFull.slice(1);
   document.getElementById('earningsMonthTotal').textContent = fmtMoney(total);
 
@@ -1917,7 +2101,7 @@ const OP_KEYS = ['cuadernas','bodega','descargaCongelado','frutaReefer','jornada
 function opCount(v){ return v===true ? 1 : Math.max(0, Math.min(3, Number(v)||0)); }
 
 function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, weekRolesForDay){
-  const feriadoInfo = FERIADOS_2026[dateISO];
+  const feriadoInfo = getFeriado(dateISO);
   const isFeriado = !!feriadoInfo;
   // Confirmado por el usuario: en PDP se paga como feriado con 100% de recargo
   // TODOS los feriados listados (nacionales, el regional de Ica y el
@@ -2250,6 +2434,7 @@ dayDetailContainer.addEventListener('toggle', (e)=>{
 }, true);
 
 function renderSummary(){
+  if(typeof renderFeriadoBar==='function') renderFeriadoBar();
   renderMonthlyTracker();
   renderLoanTracker();
   renderMonthEarnings();
@@ -2403,6 +2588,7 @@ function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.getElementById('monthBadgeBtn').addEventListener('click', ()=>openModal('monthModal'));
 document.getElementById('loanBadgeBtn').addEventListener('click', ()=>openModal('loanModal'));
 document.getElementById('earningsBadgeBtn').addEventListener('click', ()=>openModal('earningsModal'));
+document.getElementById('netoMesBtn').addEventListener('click', ()=>openModal('earningsModal'));
 
 document.getElementById('boletaFileInput').addEventListener('change', (e)=>{
   const file = e.target.files[0];
@@ -2612,7 +2798,8 @@ document.addEventListener('click', (e)=>{
       const k = btn.dataset.nav;
       if(k==='week') window.scrollTo({top:0, behavior:'smooth'});
       if(k==='month') openModal('monthModal');
-      if(k==='boleta') openModal('boletaModal');
+      if(k==='boleta'){ renderCuotaWeeks(); openModal('boletaModal'); }
+      if(k==='perfil') openModal('settingsModal');
     });
   });
   document.getElementById('openCompareFromBoleta').addEventListener('click', ()=>{
@@ -2628,6 +2815,94 @@ document.addEventListener('click', (e)=>{
     try{ localStorage.setItem('turnos-help-seen','1'); }catch(e){}
   });
 })();
+
+
+// ---------- Perfil, feriados, cuota por semana ----------
+const _DOW = ['dom','lun','mar','mié','jue','vie','sáb'];
+function fmtFechaCorta(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  return `${_DOW[dt.getDay()]} ${d}/${String(m).padStart(2,'0')}/${y}`;
+}
+function renderFeriadoBar(){
+  const bar = document.getElementById('feriadoBar');
+  if(!bar) return;
+  const hits = weekDates(currentMonday).map(d=>isoDate(d)).filter(k=>getFeriado(k));
+  if(hits.length){
+    bar.classList.add('has');
+    bar.textContent = 'Feriado esta semana: ' + hits.map(k=>fmtFechaCorta(k).slice(0,-5)+' · '+getFeriado(k).label).join(' | ');
+  } else {
+    bar.classList.remove('has');
+    bar.textContent = 'Sin feriados esta semana · ver calendario';
+  }
+}
+function renderFeriadosList(){
+  const extra = getFeriadosExtra();
+  const all = Object.assign({}, FERIADOS_2026, extra);
+  const hoy = isoDate(new Date());
+  const keys = Object.keys(all).sort().filter(k=>k >= hoy.slice(0,4)+'-01-01');
+  const scope = {nacional:'Nacional', regional:'Ica', provincial:'Pisco', empresa:'PDP', propio:'Agregado por ti'};
+  document.getElementById('feriadosList').innerHTML = keys.map(k=>{
+    const f = all[k], esExtra = !!extra[k] && !FERIADOS_2026[k];
+    return `<div class="fer-row ${k<hoy?'past':''}"><div><b>${fmtFechaCorta(k)}</b><div class="fer-name">${f.label} · ${scope[f.scope]||''}</div></div>${esExtra?`<button type="button" class="fer-del" data-del="${k}">Quitar</button>`:''}</div>`;
+  }).join('');
+}
+function refreshAfterFeriado(){
+  renderFeriadoBar(); renderFeriadosList(); renderDays(); renderSummary();
+}
+document.getElementById('feriadoBar').addEventListener('click', ()=>{ renderFeriadosList(); openModal('feriadosModal'); });
+document.getElementById('ferAddBtn').addEventListener('click', ()=>{
+  const d = document.getElementById('ferNewDate').value;
+  const l = document.getElementById('ferNewLabel').value.trim() || 'Feriado';
+  if(!d){ alert('Elige la fecha del feriado.'); return; }
+  const extra = getFeriadosExtra(); extra[d] = {label:l, scope:'propio'};
+  lsSet(userStorageKey('turnos-feriados-extra'), extra);
+  document.getElementById('ferNewDate').value=''; document.getElementById('ferNewLabel').value='';
+  refreshAfterFeriado();
+});
+document.getElementById('feriadosList').addEventListener('click', (e)=>{
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  const extra = getFeriadosExtra(); delete extra[b.dataset.del];
+  lsSet(userStorageKey('turnos-feriados-extra'), extra);
+  refreshAfterFeriado();
+});
+
+// Cuota sindical: elegir en qué semanas se cobró (las últimas 8 y la próxima)
+function renderCuotaWeeks(){
+  const box = document.getElementById('cuotaWeeksList'); if(!box) return;
+  let html = '';
+  for(let off=1; off>=-8; off--){
+    const m = new Date(currentMonday); m.setDate(m.getDate() - off*7);
+    const key = weekKey(m);
+    const obj = (m.getTime()===currentMonday.getTime()) ? weekData : (lsGet(key) || {});
+    const cur = obj._cuotaOverride===true ? 'si' : obj._cuotaOverride===false ? 'no' : 'auto';
+    const fin = new Date(m); fin.setDate(fin.getDate()+6);
+    const lbl = `${m.getDate()}/${m.getMonth()+1} – ${fin.getDate()}/${fin.getMonth()+1}`;
+    html += `<div class="cw-row"><span>Semana ${getISOWeekNumber(m)} <small>${lbl}</small></span>
+      <select data-cw="${isoDate(m)}"><option value="auto"${cur==='auto'?' selected':''}>Automático</option><option value="si"${cur==='si'?' selected':''}>Me la cobraron</option><option value="no"${cur==='no'?' selected':''}>No me la cobraron</option></select></div>`;
+  }
+  box.innerHTML = html;
+}
+document.getElementById('cuotaWeeksList').addEventListener('change', async (e)=>{
+  const sel = e.target.closest('[data-cw]'); if(!sel) return;
+  const [y,mo,d] = sel.dataset.cw.split('-').map(Number);
+  const m = new Date(y, mo-1, d);
+  const isCur = m.getTime()===currentMonday.getTime();
+  const obj = isCur ? weekData : (lsGet(weekKey(m)) || {});
+  if(obj._locked){ alert('Esa semana está cerrada.'); renderCuotaWeeks(); return; }
+  if(sel.value==='si') obj._cuotaOverride = true; else if(sel.value==='no') obj._cuotaOverride = false; else delete obj._cuotaOverride;
+  if(isCur){ await saveWeek(); } else { lsSet(weekKey(m), obj); }
+  renderSummary();
+});
+
+['comedorSemanaInput','rentaSemanaInput'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', (e)=>{
+    e.target.dispatchEvent(new Event('change'));
+  });
+});
+document.getElementById('calcBtn').addEventListener('click', ()=>openModal('calcModal'));
+document.getElementById('boletaCta').addEventListener('click', ()=>{ renderCuotaWeeks(); openModal('boletaModal'); });
+document.getElementById('openLoanFromPerfil').addEventListener('click', ()=>{ closeModal('settingsModal'); openModal('loanModal'); });
 
 document.querySelectorAll('.modal-close').forEach(btn=>{
   btn.addEventListener('click', ()=>closeModal(btn.dataset.close));
