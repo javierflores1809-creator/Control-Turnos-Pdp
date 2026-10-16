@@ -550,12 +550,14 @@
       <div class="sd-row"><span>Jornadas en horas extra (pegadas)</span><span class="val" id="rJornadasHE">0</span></div>
       <div class="sd-row"><span>Jornadas en feriado</span><span class="val" id="rJornadasFeriado">0</span></div>
       <div class="sd-row"><span>Jornadas en domingo (recargo)</span><span class="val" id="rJornadasDomingo">0</span></div>
+      <div class="sd-row"><span>Jornadas de capacitación</span><span class="val" id="rJornadasCap">0</span></div>
       <div class="sd-row total-row"><span>Total jornadas trabajadas</span><span class="val" id="rTotalJornadas">0</span></div>
       <div class="sd-section-label">Ingresos</div>
       <div class="sd-row"><span>Jornada básica</span><span class="val money" id="rJB">S/0.00</span></div>
       <div class="sd-row"><span>Trabajo en feriado (jornal doble)</span><span class="val money" id="rFER">S/0.00</span></div>
       <div class="sd-row"><span>Descanso dominical trabajado (jornal doble)</span><span class="val money" id="rDOMG">S/0.00</span></div>
       <div class="sd-row"><span>Horas extra (pegadas)</span><span class="val money" id="rHE">S/0.00</span></div>
+      <div class="sd-row"><span>Capacitación (pago básico)</span><span class="val money" id="rCAP">S/0.00</span></div>
       <div class="sd-row"><span>Adicionales por barrido/limpieza</span><span class="val money" id="rADI">S/0.00</span></div>
       <div class="sd-row"><span>Asignación familiar</span><span class="val money" id="rASIGF">S/0.00</span></div>
       <div class="sd-row"><span>Dominical</span><span class="val money" id="rDOM">S/0.00</span></div>
@@ -1035,7 +1037,7 @@ async function loadWeek(){
         turnos:{amanecida:false,dia:false,tarde:false},
         cuadernas:false, bodega:false,
         operativa:'ninguna', toneladas:0,
-        descargaCongelado:false, frutaReefer:false, jornadaSimple:false
+        descargaCongelado:false, frutaReefer:false, jornadaSimple:false, capacitacion:false
       };
     } else {
       // completar campos nuevos si la semana fue guardada con una versión anterior
@@ -1044,6 +1046,7 @@ async function loadWeek(){
       if(weekData[k].descargaCongelado===undefined) weekData[k].descargaCongelado=false;
       if(weekData[k].frutaReefer===undefined) weekData[k].frutaReefer=false;
       if(weekData[k].jornadaSimple===undefined) weekData[k].jornadaSimple=false;
+      if(weekData[k].capacitacion===undefined) weekData[k].capacitacion=false;
     }
   });
 }
@@ -1237,6 +1240,7 @@ function countWeekJornadas(){
     const prevTardeMarked = getPrevDayTardeMarked(currentMonday, weekData, i);
     const {roles} = getTurnoRoles(dd, prevTardeMarked);
     TURNOS.forEach(t=>{ if(roles[t.key]) total++; });
+    if(dd.capacitacion) total++;
   });
   return total;
 }
@@ -1277,7 +1281,7 @@ function countMonthJornadas(year, monthIndex){
 
   for(let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate()+1)){
     const dayData = getDayDataFor(d);
-    if(dayData && dayData.turnos && TURNOS.some(t=>dayData.turnos[t.key])){
+    if(dayData && dayData.turnos && (TURNOS.some(t=>dayData.turnos[t.key]) || dayData.capacitacion)){
       // Pegada cruzando medianoche: si la Tarde de AYER está marcada, la
       // Amanecida de hoy es el 2do turno consecutivo (HE) y no cuenta.
       const prevDate = new Date(d); prevDate.setDate(prevDate.getDate()-1);
@@ -1285,13 +1289,13 @@ function countMonthJornadas(year, monthIndex){
       const prevTardeMarked = !!(prevDD && prevDD.turnos && prevDD.turnos.tarde);
       const {roles, esPegada} = getTurnoRoles(dayData, prevTardeMarked);
       const turnosNormales = TURNOS.filter(t=>roles[t.key]==='normal');
-      const jornadasDelDia = turnosNormales.length;
+      const jornadasDelDia = turnosNormales.length + (dayData.capacitacion ? 1 : 0);
       total += jornadasDelDia;
       dias.push({
         fecha: new Date(d),
         esPegada,
         jornadasDelDia,
-        turnos: TURNOS.filter(t=>dayData.turnos[t.key]).map(t=>t.label)
+        turnos: TURNOS.filter(t=>dayData.turnos[t.key]).map(t=>t.label).concat(dayData.capacitacion ? ['Capacitación'] : [])
       });
     }
   }
@@ -1439,12 +1443,13 @@ function computeWeekJornadasFor(weekDataObj, dates, monday){
     const prevTardeMarked = monday ? getPrevDayTardeMarked(monday, weekDataObj, i) : false;
     const {roles} = getTurnoRoles(dd, prevTardeMarked);
     TURNOS.forEach(t=>{ if(roles[t.key]) total++; });
+    if(dd.capacitacion) total++;
   });
   return total;
 }
 const DEFAULT_DAY_DATA = {
   turnos:{amanecida:false,dia:false,tarde:false}, cuadernas:false, bodega:false,
-  operativa:'ninguna', toneladas:0, descargaCongelado:false, frutaReefer:false, jornadaSimple:false
+  operativa:'ninguna', toneladas:0, descargaCongelado:false, frutaReefer:false, jornadaSimple:false, capacitacion:false
 };
 function computeWeekDayAmounts(monday, weekDataObj){
   const dates = weekDates(monday);
@@ -1583,8 +1588,8 @@ function computeWeekSummary(monday, weekDataObj){
   const totalJornadasWeek = computeWeekJornadasFor(weekDataObj, dates, monday);
   const aplicaRM = totalJornadasWeek >= 7;
   const weekRoles = computeWeekRoles(monday, weekDataObj);
-  let JB=0,FER=0,DOMG=0,HE=0,ADI=0,ASIGF=0,RM=0;
-  let jornadasNormales=0,jornadasHE=0,jornadasFeriado=0,jornadasDomingo=0;
+  let JB=0,FER=0,DOMG=0,HE=0,ADI=0,ASIGF=0,RM=0,CAP=0;
+  let jornadasNormales=0,jornadasHE=0,jornadasFeriado=0,jornadasDomingo=0,jornadasCap=0;
 
   dates.forEach((d,i)=>{
     const k = isoDate(d);
@@ -1592,26 +1597,26 @@ function computeWeekSummary(monday, weekDataObj){
     const domingoRecargo = (i===6) && monToSatComplete;
     const r = computeDay(k, dayData, aplicaRM, domingoRecargo, weekRoles[k]);
     JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross;
-    ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
+    ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov; CAP+=r.capacitacion;
     jornadasNormales+=r.jornadasNormales; jornadasHE+=r.jornadasHE;
-    jornadasFeriado+=r.jornadasFeriado; jornadasDomingo+=r.jornadasDomingo;
+    jornadasFeriado+=r.jornadasFeriado; jornadasDomingo+=r.jornadasDomingo; jornadasCap+=r.jornadasCapacitacion;
   });
 
-  const totalJornadas = jornadasNormales+jornadasHE+jornadasFeriado+jornadasDomingo;
-  const base = JB+HE+FER+DOMG;
-  const dominical = 0.1667*CFG.basico*(jornadasNormales+jornadasFeriado+jornadasDomingo);
+  const totalJornadas = jornadasNormales+jornadasHE+jornadasFeriado+jornadasDomingo+jornadasCap;
+  const base = JB+HE+FER+DOMG+CAP;
+  const dominical = 0.1667*CFG.basico*(jornadasNormales+jornadasFeriado+jornadasDomingo+jornadasCap);
   const gratificacion = 0.1667*base;
   const bonifExtra = 0.09*gratificacion;
   const cts = 0.0833*base;
   const vacaciones = 0.0833*base;
-  const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
+  const jornalCompleto = JB+FER+DOMG+HE+CAP+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
   const totalBruto = jornalCompleto+RM;
 
   // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37, 38
   // y 40): jornada básica (incl. feriado/domingo) + horas extra + dominical
   // + vacaciones + adicionales (bonos/barridos/operativas especiales) —
   // excluye gratificación, bonif. extra, CTS y refrigerio/movilidad.
-  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones+ADI;
+  const baseAFP = JB+FER+DOMG+HE+CAP+dominical+vacaciones+ADI;
   const afp = baseAFP*(CFG.afpPct/100);
   let prestamo = 0;
   if(CFG.aplicarPrestamo){
@@ -1731,6 +1736,7 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, weekRolesForDay)
 
   let jornadaBasica=0, feriadoGross=0, domingoGross=0, heGross=0, refriMov=0, adicionales=0, asignacionFamiliar=0;
   let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0;
+  let capacitacion=0, jornadasCapacitacion=0;
 
   TURNOS.forEach(t=>{
     const role = roles[t.key];
@@ -1781,16 +1787,22 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, weekRolesForDay)
     }
   }
 
-  const diasTrabajados = TURNOS.some(t=>dayData.turnos[t.key]) ? 1 : 0;
+  // Capacitación (verificada con boleta semana 41): 1 jornal básico simple
+  // (8h, S/119.39) que NO se marca como turno. No genera hora extra ni
+  // refrigerio/movilidad, pero sí cuenta como día trabajado para el
+  // dominical y entra a la base de gratificación/CTS/vacaciones/AFP.
+  if(dayData.capacitacion){ capacitacion = CFG.basico; jornadasCapacitacion = 1; }
+
+  const diasTrabajados = (TURNOS.some(t=>dayData.turnos[t.key]) || jornadasCapacitacion) ? 1 : 0;
   // Los "adicionales" (barridos, bonos por operativa, jornada simple) se
   // calculan sobre el jornal básico y se suman como monto plano — no entran
   // a la base de gratificación/CTS/vacaciones, para que el % quede
   // exactamente sobre el básico (S/119.39) y no se infle con colaterales.
-  const baseColaterales = jornadaBasica+feriadoGross+domingoGross+heGross;
+  const baseColaterales = jornadaBasica+feriadoGross+domingoGross+heGross+capacitacion;
   // Dominical corregida según boleta real: 16.67% × básico × cantidad de
   // días trabajados (el feriado/domingo cuenta como 1 día a básico simple
   // para este cálculo, no por su monto doblado).
-  const diasEquivalentesDia = jornadasNormales+jornadasFeriado+jornadasDomingo;
+  const diasEquivalentesDia = jornadasNormales+jornadasFeriado+jornadasDomingo+jornadasCapacitacion;
   const dominicalDia = 0.1667*CFG.basico*diasEquivalentesDia;
   const gratificacionDia = 0.1667*baseColaterales;
   const bonifExtraDia = 0.09*gratificacionDia;
@@ -1799,7 +1811,7 @@ function computeDay(dateISO, dayData, aplicaRM, domingoRecargo, weekRolesForDay)
   const jornalCompletoDia = baseColaterales+adicionales+asignacionFamiliar+dominicalDia+gratificacionDia+bonifExtraDia+ctsDia+vacacionesDia;
   const subtotalDia = jornalCompletoDia+refriMov;
 
-  return {jornadaBasica, feriadoGross, domingoGross, heGross, refriMov, adicionales, asignacionFamiliar, dominicalDia, gratificacionDia, bonifExtraDia, ctsDia, vacacionesDia, subtotalDia, isFeriado, feriadoInfo, aplicarRecargoDomingo, esPegada, crossDayPegada, warning, diasTrabajados, jornadasNormales, jornadasHE, jornadasFeriado, jornadasDomingo, roles};
+  return {jornadaBasica, feriadoGross, domingoGross, heGross, refriMov, adicionales, asignacionFamiliar, dominicalDia, gratificacionDia, bonifExtraDia, ctsDia, vacacionesDia, subtotalDia, isFeriado, feriadoInfo, aplicarRecargoDomingo, esPegada, crossDayPegada, warning, diasTrabajados, jornadasNormales, jornadasHE, jornadasFeriado, jornadasDomingo, capacitacion, jornadasCapacitacion, roles};
 }
 
 function buildDayChipHTML(k, i, d, aplicaRM){
@@ -1893,6 +1905,10 @@ function buildDayDetailHTML(k, i, d, aplicaRM){
           <label class="chip ${dayData.jornadaSimple?'checked':''}">
             <input type="checkbox" data-date="${k}" data-extra="jornadaSimple" ${dayData.jornadaSimple?'checked':''}>
             Solo jornada, sin operativa específica (+50% jornal)
+          </label>
+          <label class="chip ${dayData.capacitacion?'checked':''}">
+            <input type="checkbox" data-date="${k}" data-extra="capacitacion" ${dayData.capacitacion?'checked':''}>
+            Capacitación (8h, pago básico, sin marcar turno)
           </label>
         </div>
         <div class="destajo-row">
@@ -2027,38 +2043,39 @@ function renderSummary(){
   const dates = weekDates(currentMonday);
   const aplicaRM = countWeekJornadas() >= 7;
   const monToSatComplete = weekMonToSatComplete();
-  let JB=0, FER=0, DOMG=0, HE=0, ADI=0, ASIGF=0, RM=0, diasTrabajados=0;
-  let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0;
+  let JB=0, FER=0, DOMG=0, HE=0, ADI=0, ASIGF=0, RM=0, CAP=0, diasTrabajados=0;
+  let jornadasNormales=0, jornadasHE=0, jornadasFeriado=0, jornadasDomingo=0, jornadasCap=0;
 
   const weekRoles = computeWeekRoles(currentMonday, weekData);
   dates.forEach((d, i)=>{
     const k = isoDate(d);
     const domingoRecargo = (i===6) && monToSatComplete;
     const r = computeDay(k, weekData[k], aplicaRM, domingoRecargo, weekRoles[k]);
-    JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross; ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov;
+    JB+=r.jornadaBasica; FER+=r.feriadoGross; DOMG+=r.domingoGross; HE+=r.heGross; ADI+=r.adicionales; ASIGF+=r.asignacionFamiliar; RM+=r.refriMov; CAP+=r.capacitacion;
     diasTrabajados += r.diasTrabajados;
+    jornadasCap += r.jornadasCapacitacion;
     jornadasNormales += r.jornadasNormales;
     jornadasHE += r.jornadasHE;
     jornadasFeriado += r.jornadasFeriado;
     jornadasDomingo += r.jornadasDomingo;
   });
-  const totalJornadas = jornadasNormales + jornadasHE + jornadasFeriado + jornadasDomingo;
+  const totalJornadas = jornadasNormales + jornadasHE + jornadasFeriado + jornadasDomingo + jornadasCap;
 
-  const base = JB+HE+FER+DOMG;
-  const dominical = 0.1667*CFG.basico*(jornadasNormales+jornadasFeriado+jornadasDomingo);
+  const base = JB+HE+FER+DOMG+CAP;
+  const dominical = 0.1667*CFG.basico*(jornadasNormales+jornadasFeriado+jornadasDomingo+jornadasCap);
   const gratificacion = 0.1667*base;
   const bonifExtra = 0.09*gratificacion;
   const cts = 0.0833*base;
   const vacaciones = 0.0833*base;
 
-  const jornalCompleto = JB+FER+DOMG+HE+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
+  const jornalCompleto = JB+FER+DOMG+HE+CAP+ADI+ASIGF+dominical+gratificacion+bonifExtra+cts+vacaciones;
   const totalBruto = jornalCompleto + RM;
 
   // Base de cálculo AFP/ONP verificada con boletas reales (semanas 37, 38
   // y 40): jornada básica (incl. feriado/domingo) + horas extra + dominical
   // + vacaciones + adicionales (bonos/barridos/operativas especiales) —
   // excluye gratificación, bonif. extra, CTS y refrigerio/movilidad.
-  const baseAFP = JB+FER+DOMG+HE+dominical+vacaciones+ADI;
+  const baseAFP = JB+FER+DOMG+HE+CAP+dominical+vacaciones+ADI;
   const afp = baseAFP * (CFG.afpPct/100);
   const afpLabels = {onp:'ONP (13%)', habitat:'AFP Habitat (11.37%)', integra:'AFP Integra (11.37%)', prima:'AFP Prima (11.37%)', profuturo:'AFP Profuturo (11.37%)', manual:'Pensión (personalizado)'};
   document.getElementById('rAFPLabel').textContent = afpLabels[CFG.sistemaPension] || 'AFP/ONP';
@@ -2098,17 +2115,20 @@ function renderSummary(){
   document.getElementById('rJornadasHE').textContent = jornadasHE;
   document.getElementById('rJornadasFeriado').textContent = jornadasFeriado;
   document.getElementById('rJornadasDomingo').textContent = jornadasDomingo;
+  document.getElementById('rJornadasCap').textContent = jornadasCap;
   document.getElementById('rTotalJornadas').textContent = totalJornadas;
   const quickParts = [totalJornadas + (totalJornadas===1?' jornada':' jornadas')];
   if(jornadasHE>0) quickParts.push(jornadasHE + ' en HE');
   if(jornadasFeriado>0) quickParts.push(jornadasFeriado + ' en feriado');
   if(jornadasDomingo>0) quickParts.push(jornadasDomingo + ' en domingo x2');
+  if(jornadasCap>0) quickParts.push(jornadasCap + ' capacitación');
   document.getElementById('jornadasQuickView').textContent = quickParts.join(' · ');
   document.getElementById('totalBruto').textContent = fmtMoney(totalBruto);
   document.getElementById('rJB').textContent = fmtMoney(JB);
   document.getElementById('rFER').textContent = fmtMoney(FER);
   document.getElementById('rDOMG').textContent = fmtMoney(DOMG);
   document.getElementById('rHE').textContent = fmtMoney(HE);
+  document.getElementById('rCAP').textContent = fmtMoney(CAP);
   document.getElementById('rADI').textContent = fmtMoney(ADI);
   document.getElementById('rASIGF').textContent = fmtMoney(ASIGF);
   document.getElementById('rDOM').textContent = fmtMoney(dominical);
